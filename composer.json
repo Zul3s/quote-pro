@@ -10,7 +10,7 @@
         "ddd",
         "devis"
     ],
-    "license": "MIT",
+    "license": "proprietary",
     "require": {
         "php": "^8.3",
         "inertiajs/inertia-laravel": "^3.0",
