@@ -17,7 +17,7 @@ use Illuminate\Support\Facades\Event;
 | CreateUser Use Case
 |--------------------------------------------------------------------------
 | Tests of the Application Use Case only. HTTP/transport concerns are
-| covered separately in tests/Feature/Http/Controller/User/.
+| covered separately in tests/Functional/Controller/User/.
 */
 
 it('creates a user with valid data', function () {
