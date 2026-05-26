@@ -46,16 +46,16 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 
 ## Definition of Done
 
-- [ ] La route `GET /` rend une page Inertia avec un formulaire affichant les champs : `name` (text), `email` (email), `phone` (text, optionnel), `requestType` (radio cards : `quote`, `information`, `urgent`, `other`), `deadline` (radio : `immediate`, `within_one_month`, `over_one_month`, `not_urgent`), `postalCode` (text, optionnel), `description` (textarea).
+- [x] La route `GET /` rend une page Inertia avec un formulaire affichant les champs : `name` (text), `email` (email), `phone` (text, optionnel), `requestType` (radio cards : `quote`, `information`, `urgent`, `other`), `deadline` (radio : `immediate`, `within_one_month`, `over_one_month`, `not_urgent`), `postalCode` (text, optionnel), `description` (textarea).
 - [ ] La route `POST /contact-requests` accepte ces champs et, en cas de succès, redirige vers `GET /thank-you` avec un flash `success`.
-- [ ] La route `GET /thank-you` rend une page Inertia de confirmation avec un message du type *« Merci, votre demande a bien été reçue »* et un lien retour vers `/`.
+- [x] La route `GET /thank-you` rend une page Inertia de confirmation avec un message du type *« Merci, votre demande a bien été reçue »* et un lien retour vers `/`.
 - [ ] Après un POST valide, une ligne existe en base `contact_requests` avec : `uuid`, `name`, `email`, `phone` (nullable), `request_type` (enum), `deadline` (enum), `postal_code` (nullable), `description`, `created_at`.
 - [ ] Validation : un POST avec un champ requis manquant ou un email invalide renvoie 422 (API) ou redirige avec les erreurs Inertia (web), et **aucune ligne** n'est créée en base.
-- [ ] Le Domain Event `ContactRequestSubmitted` est dispatché **une fois** par soumission valide (vérifiable via `Event::fake()` dans un test).
+- [x] Le Domain Event `ContactRequestSubmitted` est dispatché **une fois** par soumission valide (vérifiable via `Event::fake()` dans un test).
 - [x] La route `POST /contact-requests` est protégée par un rate-limiter nommé `contact` (5 requêtes / minute / IP par défaut) ; au 6e essai dans la fenêtre, la réponse est 429.
 - [x] La couche Domain ne contient **que** des interfaces pour `ContactRequest` (entity + repository + factory) et l'event `ContactRequestSubmitted` (`final readonly`).
 - [x] `./vendor/bin/pest tests/Unit/ArchTest.php` passe (aucune violation de layering).
-- [ ] Le formulaire est utilisable au clavier seul (tab order cohérent, labels associés aux inputs, `aria-invalid` sur les champs en erreur).
+- [x] Le formulaire est utilisable au clavier seul (tab order cohérent, labels associés aux inputs, `aria-invalid` sur les champs en erreur).
 
 ## Implementation TODO
 
@@ -70,15 +70,15 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 - [x] Routes dans `routes/web.php` : `GET /` → `contact/index`, `POST /contact-requests` (middleware `throttle:contact`) → submit, `GET /thank-you` → `contact/thank-you`
 - [x] Rate limiter `contact` défini dans `app/Infrastructure/Providers/AppServiceProvider.php` (ou dédié) : `RateLimiter::for('contact', fn (Request $r) => Limit::perMinute(5)->by($r->ip()))`
 - [x] Bindings ajoutés dans `app/Infrastructure/Providers/DomainServiceProvider.php` : `ContactRequestRepositoryInterface` → `EloquentContactRequestRepository`, `ContactRequestFactoryInterface` → `ContactRequestFactory` (event `ContactRequestSubmitted` **sans listener** dans cette feature)
-- [ ] Use Case tests `tests/Feature/UseCase/SubmitContactRequestTest.php` (happy path + persistance + dispatch event + validation Request) — via `/create-tests-usecase`
+- [x] Use Case tests `tests/Feature/UseCase/SubmitContactRequestTest.php` (happy path + persistance + dispatch event + validation Request) — via `/create-tests-usecase`
 - [ ] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` (POST 302 + flash, GET `/` rend la bonne page Inertia, GET `/thank-you` rend la page, 422 sur payload invalide, 429 après rate-limit) — via `/create-tests-functional`
 
 ### Frontend
-- [ ] shadcn primitives à installer : `Button`, `Input`, `Label`, `Textarea`, `RadioGroup`, `Card` — via `/create-front`
-- [ ] Page Inertia `resources/js/pages/contact/index.tsx` (formulaire principal sur `/`) — via `/create-front`
-- [ ] Page Inertia `resources/js/pages/contact/thank-you.tsx` (page de remerciement) — via `/create-front`
-- [ ] Type partagé `resources/js/types/contact-request.ts` pour le payload `SubmitContactRequestPayload` (mêmes champs que la Request backend)
-- [ ] Vérifier que Wayfinder régénère bien les helpers `resources/js/routes/contact-requests/` et `resources/js/actions/`
+- [x] shadcn primitives à installer : `Button`, `Input`, `Label`, `Textarea`, `RadioGroup`, `Card` — via `/create-front`
+- [x] Page Inertia `resources/js/pages/contact/index.tsx` (formulaire principal sur `/`) — via `/create-front`
+- [x] Page Inertia `resources/js/pages/contact/thank-you.tsx` (page de remerciement) — via `/create-front`
+- [x] Type partagé `resources/js/types/contact-request.ts` pour le payload `SubmitContactRequestPayload` (mêmes champs que la Request backend)
+- [x] Vérifier que Wayfinder régénère bien les helpers `resources/js/routes/contact-requests/` et `resources/js/actions/`
 
 ### Final validation
 - [ ] `./vendor/bin/pest` — full suite verte
