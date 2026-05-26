@@ -1,6 +1,6 @@
 # Contact form — première brique de Quote Plus
 
-> Status: accepted  <!-- draft | accepted | in progress | done -->
+> Status: in progress  <!-- draft | accepted | in progress | done -->
 > Created: 2026-05-26
 > Author: Jul3s
 
@@ -53,23 +53,23 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 - [ ] Validation : un POST avec un champ requis manquant ou un email invalide renvoie 422 (API) ou redirige avec les erreurs Inertia (web), et **aucune ligne** n'est créée en base.
 - [ ] Le Domain Event `ContactRequestSubmitted` est dispatché **une fois** par soumission valide (vérifiable via `Event::fake()` dans un test).
 - [ ] La route `POST /contact-requests` est protégée par un rate-limiter nommé `contact` (5 requêtes / minute / IP par défaut) ; au 6e essai dans la fenêtre, la réponse est 429.
-- [ ] La couche Domain ne contient **que** des interfaces pour `ContactRequest` (entity + repository + factory) et l'event `ContactRequestSubmitted` (`final readonly`).
-- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php` passe (aucune violation de layering).
+- [x] La couche Domain ne contient **que** des interfaces pour `ContactRequest` (entity + repository + factory) et l'event `ContactRequestSubmitted` (`final readonly`).
+- [x] `./vendor/bin/pest tests/Unit/ArchTest.php` passe (aucune violation de layering).
 - [ ] Le formulaire est utilisable au clavier seul (tab order cohérent, labels associés aux inputs, `aria-invalid` sur les champs en erreur).
 
 ## Implementation TODO
 
 ### Backend
-- [ ] Use Case `app/Application/UseCase/SubmitContactRequest/` (UseCase + Request, pas de Response — retourne l'entité Domain) — via `/create-usecase`
-- [ ] Domain interfaces : `ContactRequestInterface` (entity), `ContactRequestRepositoryInterface`, `ContactRequestFactoryInterface`, event `ContactRequestSubmitted`, value objects / enums `RequestType` et `Deadline` — via `/create-usecase`
-- [ ] Eloquent model `app/Infrastructure/Entity/ContactRequest.php` implémentant `ContactRequestInterface`
-- [ ] Repository `app/Infrastructure/Repository/EloquentContactRequestRepository.php`
-- [ ] Factory `app/Infrastructure/Factory/ContactRequestFactory.php`
-- [ ] Migration `database/migrations/xxxx_create_contact_requests_table.php` (colonnes : `id` uuid PK, `name`, `email`, `phone` nullable, `request_type`, `deadline`, `postal_code` nullable, `description` text, `created_at`)
+- [x] Use Case `app/Application/UseCase/SubmitContactRequest/` (UseCase + Request, pas de Response — retourne l'entité Domain) — via `/create-usecase`
+- [x] Domain interfaces : `ContactRequestInterface` (entity), `ContactRequestRepositoryInterface`, `ContactRequestFactoryInterface`, event `ContactRequestSubmitted`, value objects / enums `RequestType` et `Deadline` — via `/create-usecase`
+- [x] Eloquent model `app/Infrastructure/Entity/ContactRequest.php` implémentant `ContactRequestInterface`
+- [x] Repository `app/Infrastructure/Repository/EloquentContactRequestRepository.php`
+- [x] Factory `app/Infrastructure/Factory/ContactRequestFactory.php`
+- [x] Migration `database/migrations/2026_05_26_120142_create_contact_requests_table.php` (colonnes : `id` PK + `uuid` unique, `name`, `email`, `phone` nullable, `request_type`, `deadline`, `postal_code` nullable, `description` text, `timestamps`)
 - [ ] Controller `app/Infrastructure/Http/Controller/ContactRequest/SubmitContactRequestController.php` (POST) + `HomeController` (GET `/`) + `ThankYouController` (GET `/thank-you`)
 - [ ] Routes dans `routes/web.php` : `GET /` → form, `POST /contact-requests` (middleware `throttle:contact`) → submit, `GET /thank-you` → confirmation
 - [ ] Rate limiter `contact` défini dans `app/Infrastructure/Providers/AppServiceProvider.php` (ou dédié) : `RateLimiter::for('contact', fn (Request $r) => Limit::perMinute(5)->by($r->ip()))`
-- [ ] Bindings ajoutés dans `app/Infrastructure/Providers/DomainServiceProvider.php` : `ContactRequestRepositoryInterface` → `EloquentContactRequestRepository`, `ContactRequestFactoryInterface` → `ContactRequestFactory` (event `ContactRequestSubmitted` **sans listener** dans cette feature)
+- [x] Bindings ajoutés dans `app/Infrastructure/Providers/DomainServiceProvider.php` : `ContactRequestRepositoryInterface` → `EloquentContactRequestRepository`, `ContactRequestFactoryInterface` → `ContactRequestFactory` (event `ContactRequestSubmitted` **sans listener** dans cette feature)
 - [ ] Use Case tests `tests/Feature/UseCase/SubmitContactRequestTest.php` (happy path + persistance + dispatch event + validation Request) — via `/create-tests-usecase`
 - [ ] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` (POST 302 + flash, GET `/` rend la bonne page Inertia, GET `/thank-you` rend la page, 422 sur payload invalide, 429 après rate-limit) — via `/create-tests-functional`
 

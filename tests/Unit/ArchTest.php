@@ -57,10 +57,14 @@ arch('AbstractRequest and AbstractResponse remain abstract')
     ->toBeAbstract();
 
 arch('Domain Events are final and readonly')
-    ->expect('App\Domain\Event\User')
+    ->expect('App\Domain\Event')
     ->classes()
     ->toBeFinal()
-    ->toBeReadonly();
+    ->toBeReadonly()
+    ->ignoring([
+        'App\Domain\Event\DomainEventInterface',
+        'App\Domain\Event\EventDispatcherInterface',
+    ]);
 
 arch('Specifications extend AbstractSpecification')
     ->expect('App\Domain\Specification')

@@ -6,12 +6,16 @@ namespace App\Infrastructure\Providers;
 
 use App\Domain\Event\EventDispatcherInterface;
 use App\Domain\Event\User\UserCreated;
+use App\Domain\Factory\ContactRequestFactoryInterface;
 use App\Domain\Factory\UserFactoryInterface;
+use App\Domain\Repository\ContactRequestRepositoryInterface;
 use App\Domain\Repository\UserRepositoryInterface;
 use App\Domain\Service\MailerInterface;
 use App\Infrastructure\Event\LaravelEventDispatcher;
+use App\Infrastructure\Factory\ContactRequestFactory;
 use App\Infrastructure\Factory\UserFactory;
 use App\Infrastructure\Job\SendWelcomeEmail;
+use App\Infrastructure\Repository\EloquentContactRequestRepository;
 use App\Infrastructure\Repository\EloquentUserRepository;
 use App\Infrastructure\Service\Mailer\LaravelMailer;
 use Illuminate\Contracts\Events\Dispatcher;
@@ -30,6 +34,8 @@ final class DomainServiceProvider extends ServiceProvider
     public array $bindings = [
         UserRepositoryInterface::class => EloquentUserRepository::class,
         UserFactoryInterface::class => UserFactory::class,
+        ContactRequestRepositoryInterface::class => EloquentContactRequestRepository::class,
+        ContactRequestFactoryInterface::class => ContactRequestFactory::class,
         EventDispatcherInterface::class => LaravelEventDispatcher::class,
         MailerInterface::class => LaravelMailer::class,
     ];
