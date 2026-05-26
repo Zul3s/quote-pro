@@ -52,7 +52,7 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 - [ ] Après un POST valide, une ligne existe en base `contact_requests` avec : `uuid`, `name`, `email`, `phone` (nullable), `request_type` (enum), `deadline` (enum), `postal_code` (nullable), `description`, `created_at`.
 - [ ] Validation : un POST avec un champ requis manquant ou un email invalide renvoie 422 (API) ou redirige avec les erreurs Inertia (web), et **aucune ligne** n'est créée en base.
 - [ ] Le Domain Event `ContactRequestSubmitted` est dispatché **une fois** par soumission valide (vérifiable via `Event::fake()` dans un test).
-- [ ] La route `POST /contact-requests` est protégée par un rate-limiter nommé `contact` (5 requêtes / minute / IP par défaut) ; au 6e essai dans la fenêtre, la réponse est 429.
+- [x] La route `POST /contact-requests` est protégée par un rate-limiter nommé `contact` (5 requêtes / minute / IP par défaut) ; au 6e essai dans la fenêtre, la réponse est 429.
 - [x] La couche Domain ne contient **que** des interfaces pour `ContactRequest` (entity + repository + factory) et l'event `ContactRequestSubmitted` (`final readonly`).
 - [x] `./vendor/bin/pest tests/Unit/ArchTest.php` passe (aucune violation de layering).
 - [ ] Le formulaire est utilisable au clavier seul (tab order cohérent, labels associés aux inputs, `aria-invalid` sur les champs en erreur).
@@ -66,9 +66,9 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 - [x] Repository `app/Infrastructure/Repository/EloquentContactRequestRepository.php`
 - [x] Factory `app/Infrastructure/Factory/ContactRequestFactory.php`
 - [x] Migration `database/migrations/2026_05_26_120142_create_contact_requests_table.php` (colonnes : `id` PK + `uuid` unique, `name`, `email`, `phone` nullable, `request_type`, `deadline`, `postal_code` nullable, `description` text, `timestamps`)
-- [ ] Controller `app/Infrastructure/Http/Controller/ContactRequest/SubmitContactRequestController.php` (POST) + `HomeController` (GET `/`) + `ThankYouController` (GET `/thank-you`)
-- [ ] Routes dans `routes/web.php` : `GET /` → form, `POST /contact-requests` (middleware `throttle:contact`) → submit, `GET /thank-you` → confirmation
-- [ ] Rate limiter `contact` défini dans `app/Infrastructure/Providers/AppServiceProvider.php` (ou dédié) : `RateLimiter::for('contact', fn (Request $r) => Limit::perMinute(5)->by($r->ip()))`
+- [x] Controller `app/Infrastructure/Http/Controller/ContactRequest/SubmitContactRequestController.php` (POST, content-negotiated). `GET /` et `GET /thank-you` n'ayant besoin d'aucune donnée, ils sont câblés via `Route::inertia(...)` (pas de `HomeController`/`ThankYouController`)
+- [x] Routes dans `routes/web.php` : `GET /` → `contact/index`, `POST /contact-requests` (middleware `throttle:contact`) → submit, `GET /thank-you` → `contact/thank-you`
+- [x] Rate limiter `contact` défini dans `app/Infrastructure/Providers/AppServiceProvider.php` (ou dédié) : `RateLimiter::for('contact', fn (Request $r) => Limit::perMinute(5)->by($r->ip()))`
 - [x] Bindings ajoutés dans `app/Infrastructure/Providers/DomainServiceProvider.php` : `ContactRequestRepositoryInterface` → `EloquentContactRequestRepository`, `ContactRequestFactoryInterface` → `ContactRequestFactory` (event `ContactRequestSubmitted` **sans listener** dans cette feature)
 - [ ] Use Case tests `tests/Feature/UseCase/SubmitContactRequestTest.php` (happy path + persistance + dispatch event + validation Request) — via `/create-tests-usecase`
 - [ ] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` (POST 302 + flash, GET `/` rend la bonne page Inertia, GET `/thank-you` rend la page, 422 sur payload invalide, 429 après rate-limit) — via `/create-tests-functional`
