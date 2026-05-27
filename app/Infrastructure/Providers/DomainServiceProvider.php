@@ -11,6 +11,7 @@ use App\Domain\Factory\UserFactoryInterface;
 use App\Domain\Repository\ContactRequestRepositoryInterface;
 use App\Domain\Repository\UserRepositoryInterface;
 use App\Domain\Service\MailerInterface;
+use App\Domain\Service\RequestValidatorInterface;
 use App\Infrastructure\Event\LaravelEventDispatcher;
 use App\Infrastructure\Factory\ContactRequestFactory;
 use App\Infrastructure\Factory\UserFactory;
@@ -18,6 +19,7 @@ use App\Infrastructure\Job\SendWelcomeEmail;
 use App\Infrastructure\Repository\EloquentContactRequestRepository;
 use App\Infrastructure\Repository\EloquentUserRepository;
 use App\Infrastructure\Service\Mailer\LaravelMailer;
+use App\Infrastructure\Service\Validator\SpatieRequestValidator;
 use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Support\ServiceProvider;
 
@@ -38,6 +40,7 @@ final class DomainServiceProvider extends ServiceProvider
         ContactRequestFactoryInterface::class => ContactRequestFactory::class,
         EventDispatcherInterface::class => LaravelEventDispatcher::class,
         MailerInterface::class => LaravelMailer::class,
+        RequestValidatorInterface::class => SpatieRequestValidator::class,
     ];
 
     public function boot(Dispatcher $events): void

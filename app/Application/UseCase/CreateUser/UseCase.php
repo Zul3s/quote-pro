@@ -9,11 +9,13 @@ use App\Domain\Event\EventDispatcherInterface;
 use App\Domain\Event\User\UserCreated;
 use App\Domain\Factory\UserFactoryInterface;
 use App\Domain\Repository\UserRepositoryInterface;
+use App\Domain\Service\RequestValidatorInterface;
 use App\Domain\Specification\CanCreateUser;
 
 final readonly class UseCase
 {
     public function __construct(
+        private RequestValidatorInterface $validator,
         private UserFactoryInterface $userFactory,
         private UserRepositoryInterface $userRepository,
         private EventDispatcherInterface $events,
@@ -22,6 +24,8 @@ final readonly class UseCase
 
     public function execute(Request $request): UserInterface
     {
+        $this->validator->validate($request);
+
         $this->canCreateUser->isSatisfiedBy($request->email);
 
         $user = $this->userFactory->create(
