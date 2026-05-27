@@ -2,17 +2,16 @@
 
 declare(strict_types=1);
 
-use App\Domain\Event\User\UserCreated;
-use App\Infrastructure\Entity\User;
+use App\Events\UserCreated;
+use App\Models\User;
 use Illuminate\Support\Facades\Event;
 
 /*
 |--------------------------------------------------------------------------
 | CreateUserController — HTTP / Inertia layer
 |--------------------------------------------------------------------------
-| Covers transport-level concerns: JSON vs Inertia response shape, Domain
-| exception → HTTP status translation (via bootstrap/app.php), session
-| flash. Business logic itself is covered in CreateUser Use Case test.
+| Transport-level concerns: JSON vs Inertia response shape, validation →
+| HTTP status, session flash. Business logic is covered in the Action test.
 */
 
 it('returns a 201 JSON payload for API clients', function () {
@@ -29,12 +28,21 @@ it('returns a 201 JSON payload for API clients', function () {
         ->assertJsonFragment(['email' => 'http.user@example.com']);
 });
 
-it('returns 422 JSON when a Domain validation fails on API call', function () {
+it('returns 422 JSON when the email is already taken', function () {
     User::factory()->create(['email' => 'taken@example.com']);
 
     $response = $this->postJson('/users', [
         'email' => 'taken@example.com',
         'firstName' => 'Dup',
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['email']);
+});
+
+it('returns 422 JSON when the payload is malformed', function () {
+    $response = $this->postJson('/users', [
+        'email' => 'not-an-email',
     ]);
 
     $response->assertStatus(422)

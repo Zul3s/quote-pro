@@ -1,7 +1,7 @@
 <?php
 
-use App\Infrastructure\Http\Controller\ContactRequest\SubmitContactRequestController;
-use App\Infrastructure\Http\Controller\User\CreateUserController;
+use App\Http\Controllers\ContactRequest\SubmitContactRequestController;
+use App\Http\Controllers\User\CreateUserController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'contact/index')->name('home');

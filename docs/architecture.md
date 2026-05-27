@@ -1,202 +1,141 @@
 # Architecture — Quote Plus
 
-Ce projet applique une architecture **DDD / Clean / Hexagonale** inspirée du projet Symfony de référence `team_joy`, transposée dans le monde Laravel.
+Ce projet applique une architecture **Laravel layered** idiomatique, articulée autour
+d'**Actions** (cas d'usage) et de l'**Active Record** Eloquent.
+
+> **Historique** : le projet a d'abord suivi une architecture hexagonale/DDD (Domain/Application/
+> Infrastructure, Repository, Factory, interfaces d'entité, ports). Elle a été abandonnée le
+> 2026-05-27 : mettre de l'Active Record *derrière* un Repository cumulait le couplage Eloquent
+> **et** la cérémonie Data Mapper sans bénéfice. On a « descendu la couture ».
 
 ## Vue d'ensemble
 
 ```
-┌─────────────────────────────────────┐
-│  Infrastructure (Laravel-aware)     │
-│  Controllers · Eloquent · Jobs      │
-└──────────────┬──────────────────────┘
-               │ dépend de ↓
-┌──────────────┴──────────────────────┐
-│  Application (orchestration)        │
-│  Use Cases · Request/Response DTOs  │
-└──────────────┬──────────────────────┘
-               │ dépend de ↓
-┌──────────────┴──────────────────────┐
-│  Domain (cœur métier — PHP pur)     │
-│  Interfaces · Specs · Events · VO   │
-└─────────────────────────────────────┘
-       ↑ implémente / fournit
-       │
-  (Infrastructure)
+HTTP (Controller)  →  Action (orchestration + métier)  →  Model (Active Record)
+        │                      │
+        │                      ├─ Data (DTO d'entrée, validation de forme)
+        │                      └─ Rules (règles métier réutilisables)
 ```
 
-**Règle d'or** : les dépendances vont toujours vers le centre (Domain). Domain ne sait rien de l'extérieur ; Application ne connaît que Domain ; Infrastructure peut tout connaître.
+**Règle d'or** : le HTTP s'arrête au Controller. L'Action porte le métier (validation comprise) et
+ne connaît jamais la couche HTTP. Eloquent est le moteur de persistance, utilisé directement.
 
-## Conventions par couche
+## Arborescence (`app/`)
 
-### `app/Domain/` — Cœur métier
+| Dossier | Rôle |
+|---|---|
+| `Models/` | Entités Active Record (Eloquent). Identité UUIDv7 via le trait natif `HasUuids` sur la colonne `uuid`. |
+| `Actions/` | Cas d'usage (`final readonly`, `handle(Data): Model`). Orchestration + déclenchement des règles métier. **Jamais de `Illuminate\Http`.** |
+| `Data/` | DTO d'entrée (`spatie/laravel-data`). Portent la **validation de forme**. Construits uniquement via des constructeurs nommés. |
+| `Rules/` | Règles métier réutilisables (`implements ValidationRule`). Successeurs des Specifications. |
+| `Enums/` | Énumérations (`RequestType`, `Deadline`). |
+| `Events/` | Événements natifs (`use Dispatchable`), portent le modèle concerné. |
+| `Listeners/` | Réactions aux événements (ex. envoi d'email). Câblés explicitement dans `EventServiceProvider`. |
+| `Mail/` | Mailables. |
+| `Http/Controllers/` | Controllers invokables fins : font le pont HTTP → Data → Action. |
+| `Http/Middleware/` | Middlewares HTTP. |
+| `Providers/` | `AppServiceProvider` (rate limiters, defaults) et `EventServiceProvider` (mapping event→listener explicite). |
 
-Contient les interfaces, value objects (enums, classes immuables), événements de domaine, specifications (règles métier) et exceptions métier.
+## Modèle de validation
 
-**Autorisé** : PHP pur, `Ramsey\Uuid`, `DateTimeImmutable`, `Carbon` (à la rigueur).
+C'est le point structurant du projet. **L'Action est l'autorité de validation** — pas le bord HTTP —
+pour qu'une donnée invalide ne puisse jamais l'atteindre, quel que soit l'appelant (HTTP, job, CLI, test).
 
-**Interdit** (vérifié par `tests/Arch/ArchTest.php`) : `Illuminate\*`, `Spatie\LaravelData\*`, `extends Model`, `app()`, `request()`, `FormRequest`, query builders Eloquent.
+On distingue deux validations :
 
-Sous-dossiers :
-- `Entity/` — interfaces d'entité (`UserInterface extends EntityInterface`) et de Read Models partiels
-- `Repository/` — interfaces de repository (`UserRepositoryInterface`)
-- `Factory/` — interfaces de factory (`UserFactoryInterface`)
-- `Specification/` — règles métier (`CanCreateUser`)
-- `Event/` — événements de domaine (`UserCreated`, past tense, `final readonly`)
-- `Model/` — value objects et enums (`ValidationReason`)
-- `Exception/` — exceptions métier (`ValidationsException`)
+1. **Forme** (`required`, `email`, `max`, enum) → portée par le **Data**, déclenchée à sa construction.
+2. **Métier** (unicité, invariants) → portée par l'**Action**, via des objets `Rules`.
 
-### `app/Application/` — Use Cases
+### Le DTO d'entrée (`app/Data/`)
 
-Un Use Case par dossier, contenant :
-- `UseCase.php` — orchestration (jamais d'accès direct DB ou HTTP)
-- `Request.php` — DTO d'entrée, `extends AbstractRequest`
-- `Response.php` — DTO de sortie, **uniquement si nécessaire** (combinaison d'entités ou besoin de sérialisation Inertia/TS), `extends AbstractResponse`. Sinon, le Use Case retourne directement une entité Domain (ou `array<XxxInterface>`).
+- Étend `Spatie\LaravelData\Data`, propriétés `readonly`.
+- Construit **exclusivement** via des **constructeurs nommés par source**, chacun validant
+  (`validateAndCreate`) :
+  - `fromRequest(Illuminate\Http\Request $r): self` — couplé HTTP (assumé ; c'est pour ça que les
+    DTO vivent dans `app/Data` et non dans `app/Actions`),
+  - `fromValues(...): self` — valeurs typées, hors HTTP.
+- Le `new XxxData(...)` direct contournerait la validation. Il est **interdit**, garanti par un test
+  AST (voir garde-fous). Le constructeur ne peut pas être `private` : Spatie hydrate par réflexion
+  via le constructeur et lèverait « Call to private __construct ».
 
-**Autorisé** :
-- Domain (interfaces)
-- `spatie/laravel-data` — voir décision plus bas
-- `Illuminate\Contracts\Events\Dispatcher`, `Illuminate\Contracts\Bus\Dispatcher` (jobs)
-
-**Interdit** : Eloquent direct (`extends Model`, `User::query()`), `FormRequest`, `Illuminate\Http\Request`, accès direct DB.
-
-### `app/Infrastructure/` — Implémentations techniques
-
-Toutes les implémentations concrètes. Laravel s'utilise librement ici.
-
-Sous-dossiers :
-- `Entity/` — modèles Eloquent qui **implémentent** les interfaces de `Domain/Entity/` (`User extends Authenticatable implements UserInterface`)
-- `Repository/` — implémentations Eloquent des repositories (`EloquentUserRepository implements UserRepositoryInterface`)
-- `Factory/` — implémentations des factories Domain
-- `Event/` — adaptateurs d'événements (`LaravelEventDispatcher`)
-- `Http/Controller/` — controllers fins qui délèguent à un Use Case
-- `Http/Middleware/` — middlewares HTTP (ex : `HandleInertiaRequests`)
-- `Job/` — jobs asynchrones (équivalent des `MessageHandler` Symfony)
-- `Providers/` — Service Providers Laravel = wiring du container (équivalent `config/services.yaml` Symfony). Référencés dans `bootstrap/providers.php`.
-- `Service/` — adaptateurs externes (mailer, API, LLM, etc.)
-
-**Note** : le dossier `app/` ne contient **que** `Domain/`, `Application/`, `Infrastructure/`. Les conventions Laravel par défaut (`app/Http/`, `app/Providers/`, `app/Models/`) ont été supprimées : leurs contenus ont été redistribués dans `Infrastructure/`.
-
-## Où ranger un Service ? La règle des trois familles
-
-Le mot "service" est ambigu. Selon ce qu'il fait, un service vit dans une couche différente.
-
-| Couche | Quoi | Rôle | Couplage | Exemple |
-|---|---|---|---|---|
-| `Domain/Service/` | **Contrats** (interfaces) | Définir ce dont le métier a besoin, sans dire comment | PHP pur, zéro framework | `MailerInterface` |
-| `Application/Service/` | **Orchestrateurs applicatifs** | Logique transversale partagée par plusieurs Use Cases — pas un Use Case lui-même, mais un outil de Use Case | PHP pur, peut dépendre de Domain | _(vide à ce stade, ex futur : un `DateRangeCalculator`)_ |
-| `Infrastructure/Service/` | **Implémentations techniques** | Adapters concrets vers le monde extérieur (Laravel, libs, APIs HTTP, etc.) | Couplé framework ou lib | `Mailer/LaravelMailer` |
-
-**Pour choisir la bonne couche** :
-
-- Une interface qui décrit un besoin métier (sans implémentation) va dans `Domain/Service/`.
-- Une classe qui dépend de Laravel ou d'une lib externe va dans `Infrastructure/Service/`.
-- Une classe en PHP pur (sans framework) réutilisée par plusieurs Use Cases, qui n'est ni un Use Case ni un contrat, va dans `Application/Service/`.
-
-Si une classe n'est utilisée que par un seul Use Case, ce n'est pas un service applicatif : c'est du code privé du Use Case (méthode privée, ou collaborator dédié dans son dossier de Use Case).
-
-Le dossier `Application/Service/` n'existe pas tant qu'on n'a pas de contenu à y mettre — un dossier vide est du bruit.
-
-## Décision : `spatie/laravel-data` autorisé dans `Application/`
-
-`AbstractRequest extends Data` et `AbstractResponse extends Data` introduisent une dépendance à Spatie dans la couche Application. **C'est un choix assumé.**
-
-**Justification** :
-- validation par attributs identique à ce qu'on faisait avec `#[Assert\…]` en Symfony,
-- hydratation auto depuis la `Request` HTTP, JSON, array, model,
-- génération automatique des types TypeScript côté front (Inertia + React) si l'on installe `spatie/laravel-typescript-transformer`.
-
-**Garde-fous** :
-- Domain reste 100 % framework-agnostic (aucun `extends Data` autorisé en Domain).
-- Tout `Request` de Use Case doit `extends AbstractRequest` (règle ArchTest).
-- Une éventuelle migration future vers un autre DTO se ferait en modifiant une seule classe (`AbstractRequest`).
-
-## Naming standard
-
-| Type | Convention | Exemple |
-|---|---|---|
-| Interface Domain | suffix `Interface` | `UserInterface` |
-| Repository interface | suffix `RepositoryInterface` | `UserRepositoryInterface` |
-| Repository impl. | préfix `Eloquent` | `EloquentUserRepository` |
-| Factory interface | suffix `FactoryInterface` | `UserFactoryInterface` |
-| Specification | préfix `Can…` ou nom métier | `CanCreateUser` |
-| Use Case classe | toujours `UseCase` | `CreateUser\UseCase` |
-| Request DTO | toujours `Request` | `CreateUser\Request` |
-| Response DTO | toujours `Response` | `CreateUser\Response` |
-| Domain Event | past tense, `final readonly` | `UserCreated` |
-| Job | impératif | `SendWelcomeEmail` |
-| Controller | suffix `Controller` | `CreateUserController` |
-
-## Exemple de Use Case (fil rouge)
-
-`app/Application/UseCase/CreateUser/` regroupe :
+### L'Action (`app/Actions/`)
 
 ```php
-// Request.php
-final class Request extends AbstractRequest {
-    public function __construct(
-        #[Required, Email, Max(180)] public string $email,
-        #[Nullable, Max(100)] public ?string $firstName = null,
-        #[Nullable, Max(100)] public ?string $lastName = null,
-    ) {}
-}
+final readonly class CreateUser
+{
+    public function handle(CreateUserData $data): User
+    {
+        // 1. Règle métier — l'Action est l'autorité
+        Validator::make(['email' => $data->email], ['email' => [new EmailIsUnique]])->validate();
 
-// UseCase.php
-final readonly class UseCase {
-    public function __construct(
-        private UserFactoryInterface $userFactory,
-        private UserRepositoryInterface $userRepository,
-        private EventDispatcherInterface $events,
-        private CanCreateUser $canCreateUser,
-    ) {}
+        // 2. Active Record
+        $user = User::create([
+            'email' => $data->email,
+            'first_name' => $data->firstName,
+            'last_name' => $data->lastName,
+        ]);
 
-    public function execute(Request $request): UserInterface {
-        $this->canCreateUser->isSatisfiedBy($request->email); // throw ValidationsException si KO
-        $user = $this->userFactory->create($request->email, $request->firstName, $request->lastName);
-        $this->userRepository->save($user);
-        $this->events->dispatch(new UserCreated($user->getUuid(), $user->getEmail()));
+        // 3. Événement natif
+        UserCreated::dispatch($user);
+
         return $user;
     }
 }
 ```
 
-Le Controller est minimal :
+### Le Controller
 
 ```php
-final readonly class CreateUserController {
-    public function __invoke(Request $request, UseCase $useCase): JsonResponse {
-        $user = $useCase->execute($request);
-        return new JsonResponse([...], 201);
+final readonly class CreateUserController
+{
+    public function __invoke(Request $request, CreateUser $action): JsonResponse|RedirectResponse
+    {
+        $user = $action->handle(CreateUserData::fromRequest($request)); // pont HTTP → Data
+        // ... sérialisation JSON ou redirect
     }
 }
 ```
 
-`spatie/laravel-data` résout le `Request` directement depuis la requête HTTP et applique la validation avant l'entrée dans le Use Case.
+La forme est validée dans `fromRequest` (lève `Illuminate\Validation\ValidationException` →
+422 JSON ou redirect-back-with-errors, géré nativement par Laravel). Le métier est validé dans l'Action.
 
-## Read Models partiels
+## Garde-fous CI (`tests/Unit/`)
 
-Pour exposer une vue partielle d'une entité (ex : liste de devis sans charger toutes les relations), créer :
-1. Une interface dans `app/Domain/Entity/` (ex : `QuoteSummaryInterface`)
-2. Un DTO `final readonly` dans `app/Infrastructure/Entity/` qui implémente l'interface
-3. Une méthode dans le Repository qui hydrate ce DTO via un `select` ciblé
+La discipline ne repose pas sur la convention mais sur des règles **mécaniques** vérifiées en CI.
 
-Le Domain ne change pas de structure (mélangé avec les entités riches dans `Domain/Entity/`).
+### `ArchTest.php` (Pest arch)
+- `App\Actions` : `final` **et** ne dépend jamais de `Illuminate\Http` / `Inertia` (la couture).
+- `App\Http\Controllers` : ne touche pas la base directement (`DB` facade).
+- `App\Data` : étend `Spatie\LaravelData\Data`.
+- `App\Rules` : implémente `Illuminate\Contracts\Validation\ValidationRule`.
+- `App\Enums` : sont des enums. `App\Events` : `final`.
 
-## Garde-fous CI
+### `ArchDataConstructionTest.php` (niveau AST, php-parser)
+- Interdit tout `new XxxData(...)` hors `app/Data/` : le DSL Pest arch ne sait pas distinguer une
+  instanciation d'une simple référence de type, donc on parcourt l'AST. Force le passage par
+  `fromRequest`/`fromValues` (donc par la validation).
 
-`tests/Unit/ArchTest.php` applique une **approche allow-list** : par défaut **rien n'est autorisé** ; on liste explicitement les dépendances acceptées. C'est plus sûr qu'une deny-list (impossible d'oublier d'interdire quelque chose puisque tout import non listé fait échouer la CI).
+## Naming
 
-**Domain** ne peut utiliser **que** : `App\Domain`, `Ramsey\Uuid`, `DateTimeImmutable`, `RuntimeException`. Ajouter une dépendance suppose de l'ajouter explicitement à la règle (et donc à la doc).
+| Type | Convention | Exemple |
+|---|---|---|
+| Modèle Eloquent | nom métier | `User`, `ContactRequest` |
+| Action | verbe (cas d'usage) | `CreateUser`, `SubmitContactRequest` |
+| DTO d'entrée | suffixe `Data` | `CreateUserData` |
+| Règle métier | nom affirmatif | `EmailIsUnique` |
+| Événement | passé | `UserCreated` |
+| Listener | impératif | `SendWelcomeEmail` |
+| Controller | suffixe `Controller` | `CreateUserController` |
 
-**Application** ne peut utiliser **que** : `App\Application`, `App\Domain`, `Ramsey\Uuid`, `Spatie\LaravelData`. Si un Use Case a besoin d'un autre service Laravel (ex : `Illuminate\Contracts\Events\Dispatcher` pour dispatcher un event Laravel natif), il faut soit l'ajouter explicitement à la règle, soit passer par une interface Domain et son implémentation Infrastructure (préféré).
+## Tests
 
-Autres règles structurelles :
-- tout `*\Request` dans `App\Application\UseCase` doit `extends AbstractRequest`
-- `App\Domain\Entity/`, `Repository/`, `Factory/` ne contiennent que des interfaces
-- Domain Events (`App\Domain\Event\User`) doivent être `final readonly`
-- les Specifications étendent `AbstractSpecification`
-- les Use Case classes sont `final`
-- `Illuminate\Database\Eloquent\Model` ne peut être utilisé dans `App\Domain` ou `App\Application`
+- `tests/Feature/Action/` — Actions (orchestration + règles métier), avec DB et `Event::fake`.
+- `tests/Feature/Listener/` — listeners (ex. `Mail::fake`).
+- `tests/Functional/Controller/` — couche HTTP (contrat JSON, Inertia/redirect, 422).
+- `tests/Unit/` — arch tests + helpers purs.
 
-## Bindings
+## Async & événements
 
-Les bindings interface → implémentation sont centralisés dans `app/Providers/DomainServiceProvider.php` (enregistré dans `bootstrap/providers.php`). C'est aussi là que les Domain Events sont mappés vers leurs Jobs async.
+- Mapping event → listener **explicite** dans `EventServiceProvider` (`shouldDiscoverEvents(): false`),
+  pas d'auto-discovery.
+- Les emails sont des Mailables `ShouldQueue`, mis en file par le listener.

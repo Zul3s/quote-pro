@@ -30,10 +30,10 @@ composer test                                           # config:clear + pint --
 ```
 - Three testsuites in `phpunit.xml`:
   - `Unit` (`tests/Unit/`) — pure isolated tests, no DB.
-  - `Feature` (`tests/Feature/`) — Use Case + Domain coverage, with `RefreshDatabase`.
-  - `Functional` (`tests/Functional/`) — HTTP/Controller coverage (Inertia, JSON API, web forms), with `RefreshDatabase`. Named `Functional` and **not** `Application` to avoid confusion with the DDD `app/Application/` layer.
+  - `Feature` (`tests/Feature/`) — Action (`Action/`) + Listener (`Listener/`) coverage, with `RefreshDatabase`.
+  - `Functional` (`tests/Functional/`) — HTTP/Controller coverage (Inertia, JSON API, web forms), with `RefreshDatabase`.
 - `RefreshDatabase` wiring lives in `tests/Pest.php` (applied to both `Feature` and `Functional`).
-- `tests/Unit/ArchTest.php` is the **CI architectural guardrail** — any DDD layering violation is caught there.
+- `tests/Unit/ArchTest.php` and `tests/Unit/ArchDataConstructionTest.php` are the **CI architectural guardrails**.
 - Run a single testsuite with `./vendor/bin/pest --testsuite=Functional` (or `Feature`, `Unit`).
 
 ### Lint / format / types
@@ -54,54 +54,48 @@ npm run build          # frontend production build
 npm run build:ssr      # build + SSR
 ```
 
-## Architecture (DDD / Clean / Hexagonal)
+## Architecture (Layered Laravel — Actions + Active Record)
 
-`docs/architecture.md` (in French) is the **source of truth** — read before any structural change. Operational summary:
+`docs/architecture.md` (in French) is the **source of truth** — read before any structural change.
+
+> The project moved away from a hexagonal/DDD layout (Domain/Application/Infrastructure, Repository,
+> Factory, ports) on 2026-05-27. Standard Laravel `app/` layout is used.
 
 ```
-Infrastructure (Laravel)  →  Application (Use Cases)  →  Domain (pure PHP)
+HTTP (Controller)  →  Action (orchestration + business rules)  →  Model (Active Record)
+                            ├─ Data  (input DTO, form validation)
+                            └─ Rules (reusable business rules)
 ```
 
-The `app/` folder contains **only** `Domain/`, `Application/`, `Infrastructure/`. Default Laravel layout (`app/Http/`, `app/Providers/`, `app/Models/`) has been removed — its content is redistributed inside `Infrastructure/`.
+**Golden rule**: HTTP stops at the Controller. The Action carries the business (validation included)
+and never touches the HTTP layer. Eloquent is used directly.
 
-### `app/Domain/` — pure PHP, zero framework
-- `Entity/`, `Repository/`, `Factory/`: **interfaces only** (enforced by ArchTest).
-- `Specification/`: business rules (`CanXxx`), extending `AbstractSpecification`.
-- `Event/<Aggregate>/`: `final readonly` events, past tense (`UserCreated`).
-- `Model/`, `Exception/`: value objects, enums, business exceptions.
-- `Service/`: interfaces only (e.g. `MailerInterface`) — no implementation.
-- ArchTest allow-list: `App\Domain`, `Ramsey\Uuid`, `DateTimeImmutable`, `RuntimeException`. Adding any other import requires updating the rule explicitly.
+### Layers (`app/`)
+- `Models/` — Eloquent entities. UUIDv7 identity via the native `HasUuids` trait on the `uuid` column (`uniqueIds()` returns `['uuid']`; `id` stays the auto-increment PK).
+- `Actions/` — use cases (`final readonly`, `handle(XxxData): Model`). Run business `Rules` via the `Validator` facade, persist, dispatch a native event. **Never use `Illuminate\Http`.**
+- `Data/` — input DTOs (`extends Spatie\LaravelData\Data`, `readonly` props) carrying **form validation** (`rules()`). Built **only** via named constructors `fromRequest(Request)` / `fromValues(...)`, each calling `validateAndCreate`. Direct `new XxxData(...)` is forbidden (AST guardrail). The constructor stays **public** (Spatie hydrates through it; `private` breaks hydration).
+- `Rules/` — reusable business rules (`implements ValidationRule`), e.g. `EmailIsUnique`.
+- `Enums/` — `RequestType`, `Deadline`.
+- `Events/` — native events (`use Dispatchable`), carry the model.
+- `Listeners/` — wired explicitly in `EventServiceProvider` (`shouldDiscoverEvents(): false`).
+- `Mail/` — Mailables (`ShouldQueue`).
+- `Http/Controllers/` — thin invokable controllers: `$action->handle(XxxData::fromRequest($request))`.
+- `Providers/` — `AppServiceProvider` (rate limiters, defaults), `EventServiceProvider` (event→listener map).
 
-### `app/Application/UseCase/<UseCaseName>/`
-- `UseCase.php` (`final`, orchestration only),
-- `Request.php` (`extends AbstractRequest`, attribute-based validation via `spatie/laravel-data`),
-- `Response.php` (`extends AbstractResponse`) — **only when needed**; otherwise the Use Case returns a Domain entity directly.
-- ArchTest allow-list: `App\Application`, `App\Domain`, `Ramsey\Uuid`, `Spatie\LaravelData`.
-- **Forbidden**: Eloquent, `FormRequest`, `Illuminate\Http\Request`, direct DB access.
-
-### `app/Infrastructure/`
-- `Entity/`: Eloquent models that **implement** Domain interfaces (`User implements UserInterface`).
-- `Repository/`: Eloquent implementations, prefixed `Eloquent...`.
-- `Http/Controller/`: thin controllers that delegate to a Use Case.
-- `Job/`: async handlers (equivalent of Symfony `MessageHandler`).
-- `Providers/DomainServiceProvider.php`: **all** interface → implementation bindings, plus Domain Event → Job wiring (`$events->listen(UserCreated::class, ...)`). Registered from `bootstrap/providers.php`.
-
-### "Service" — three families
-- Interface (business need) → `Domain/Service/`
-- Framework/lib implementation → `Infrastructure/Service/`
-- Pure-PHP orchestrator shared across Use Cases → `Application/Service/` (create the folder only when there is content).
+### Validation model (the core decision)
+- **Form** (required/email/max/enum) → in the **Data**, fired at construction (`fromRequest`/`fromValues`). Throws `Illuminate\Validation\ValidationException` → 422 / redirect-back, handled natively.
+- **Business** (uniqueness, invariants) → in the **Action**, via `Rules` objects. The Action is the single authority, so validity holds for HTTP, queue, CLI and tests alike.
 
 ### Naming
-| Type | Convention |
-|---|---|
-| Domain interface | `Interface` suffix |
-| Repository impl. | `Eloquent` prefix |
-| Specification | `Can…` prefix |
-| Use Case class | `UseCase` |
-| Request / Response DTO | `Request` / `Response` |
-| Domain Event | past tense, `final readonly` |
-| Job | imperative |
-| Controller | `Controller` suffix |
+| Type | Convention | Example |
+|---|---|---|
+| Model | business noun | `User`, `ContactRequest` |
+| Action | verb (use case) | `CreateUser` |
+| Input DTO | `Data` suffix | `CreateUserData` |
+| Business rule | affirmative noun | `EmailIsUnique` |
+| Event | past tense | `UserCreated` |
+| Listener | imperative | `SendWelcomeEmail` |
+| Controller | `Controller` suffix | `CreateUserController` |
 
 ## Frontend (Inertia + Wayfinder)
 
@@ -111,14 +105,16 @@ The `app/` folder contains **only** `Domain/`, `Application/`, `Infrastructure/`
 
 ## ArchTest rules to respect (failing CI otherwise)
 
-**Allow-list approach**: any import not listed makes CI fail.
-- `App\Domain` can only use its own allow-list (see above).
-- `App\Application` likewise.
-- Every `*\Request` under `App\Application\UseCase` must `extends AbstractRequest`.
-- Use Case classes: `final`. Domain Events: `final readonly`.
-- `Illuminate\Database\Eloquent\Model` is forbidden inside `Domain` and `Application`.
+`tests/Unit/ArchTest.php` (Pest arch):
+- `App\Actions` are `final` **and** never use `Illuminate\Http` / `Inertia` (the seam).
+- `App\Http\Controllers` never use the `DB` facade.
+- `App\Data` extend `Spatie\LaravelData\Data`; `App\Rules` implement `ValidationRule`.
+- `App\Enums` are enums; `App\Events` are `final`.
 
-To add a new dependency in Domain or Application, **explicitly update** `tests/Unit/ArchTest.php` (and reflect the change in `docs/architecture.md`).
+`tests/Unit/ArchDataConstructionTest.php` (AST, php-parser):
+- forbids `new XxxData(...)` outside `app/Data/` — input DTOs must be built via `fromRequest`/`fromValues` so validation always runs.
+
+Changing the architecture means updating these tests **and** `docs/architecture.md`.
 
 ## Conventions for this repo
 

@@ -2,82 +2,46 @@
 
 declare(strict_types=1);
 
-use App\Application\UseCase\AbstractRequest;
-use App\Application\UseCase\AbstractResponse;
-
 /*
 |--------------------------------------------------------------------------
 | Architecture tests
 |--------------------------------------------------------------------------
 |
-| Guarantee the DDD layering: Domain has zero framework dependency,
-| Application stays away from Eloquent/HTTP, and naming conventions hold.
-| See docs/architecture.md for the full ruleset.
+| The layered-Laravel guardrail (replaces the former hexagonal isolation):
+| "HTTP stops at the controller; Actions never see the HTTP layer; Eloquent
+| is the persistence engine; business rules and input DTOs have a fixed home."
+| See docs/architecture.md.
+|
+| The "no `new XxxData`" rule lives in ArchDataConstructionTest.php (AST-level,
+| which the Pest arch DSL cannot express).
 |
 */
 
-arch('Domain only depends on PHP, Domain itself, and approved value-object libs')
-    ->expect('App\Domain')
-    ->toOnlyUse([
-        // Domain peut s'auto-référencer
-        'App\Domain',
-        // Bibliothèques de Value Objects acceptées (PHP-only, sans framework)
-        'Ramsey\Uuid',
-        'DateTimeImmutable',
-        // Exceptions PHP standard que les Exception métier peuvent étendre
-        'RuntimeException',
-    ]);
+arch('Actions are final')
+    ->expect('App\Actions')
+    ->toBeClasses()
+    ->toBeFinal();
 
-arch('Application only depends on Domain, itself, and explicitly allowed libs')
-    ->expect('App\Application')
-    ->toOnlyUse([
-        // Auto-référence + Domain
-        'App\Application',
-        'App\Domain',
-        // Value Objects PHP-only manipulés par les Use Cases
-        'Ramsey\Uuid',
-        // laravel-data autorisé exclusivement ici (voir docs/architecture.md §3)
-        'Spatie\LaravelData',
-    ]);
+arch('Actions never touch the HTTP layer (the seam)')
+    ->expect('App\Actions')
+    ->not->toUse(['Illuminate\Http', 'Inertia']);
 
-arch('Domain Entity namespace contains only interfaces or readonly DTOs')
-    ->expect('App\Domain\Entity')
-    ->toBeInterfaces();
+arch('Controllers never hit the database directly')
+    ->expect('App\Http\Controllers')
+    ->not->toUse(['Illuminate\Support\Facades\DB']);
 
-arch('Domain Repository namespace contains only interfaces')
-    ->expect('App\Domain\Repository')
-    ->toBeInterfaces();
+arch('Input DTOs extend Spatie Data')
+    ->expect('App\Data')
+    ->toExtend('Spatie\LaravelData\Data');
 
-arch('Domain Factory namespace contains only interfaces')
-    ->expect('App\Domain\Factory')
-    ->toBeInterfaces();
+arch('Business rules implement ValidationRule')
+    ->expect('App\Rules')
+    ->toImplement('Illuminate\Contracts\Validation\ValidationRule');
 
-arch('AbstractRequest and AbstractResponse remain abstract')
-    ->expect([AbstractRequest::class, AbstractResponse::class])
-    ->toBeAbstract();
+arch('Enums are enums')
+    ->expect('App\Enums')
+    ->toBeEnums();
 
-arch('Domain Events are final and readonly')
-    ->expect('App\Domain\Event')
-    ->classes()
-    ->toBeFinal()
-    ->toBeReadonly()
-    ->ignoring([
-        'App\Domain\Event\DomainEventInterface',
-        'App\Domain\Event\EventDispatcherInterface',
-    ]);
-
-arch('Specifications extend AbstractSpecification')
-    ->expect('App\Domain\Specification')
-    ->classes()
-    ->toExtend('App\Domain\Specification\AbstractSpecification')
-    ->ignoring('App\Domain\Specification\AbstractSpecification');
-
-arch('Use Case classes are final')
-    ->expect('App\Application\UseCase')
-    ->classes()
-    ->toBeFinal()
-    ->ignoring([AbstractRequest::class, AbstractResponse::class]);
-
-arch('Eloquent models live only in Infrastructure')
-    ->expect('Illuminate\Database\Eloquent\Model')
-    ->not->toBeUsedIn(['App\Domain', 'App\Application']);
+arch('Events are final')
+    ->expect('App\Events')
+    ->toBeFinal();
