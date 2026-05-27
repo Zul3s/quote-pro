@@ -1,19 +1,19 @@
 ---
 name: create-tests-functional
-description: Generate Pest HTTP/Controller functional tests for a feature — JSON API contract, web form redirects + session flash, Inertia render assertions, Domain exception → HTTP translation. Lives under `tests/Functional/` (Functional testsuite). Use when asked to test a Controller, test an HTTP endpoint, write a route test, cover the API/web layer, test Inertia responses, or write functional tests. Business logic is covered by `create-tests-usecase`.
+description: Generate Pest HTTP/Controller functional tests for a feature — JSON API contract, web form redirects + session flash, Inertia render assertions, validation → HTTP status. Lives under `tests/Functional/` (Functional testsuite). Use when asked to test a Controller, test an HTTP endpoint, write a route test, cover the API/web layer, test Inertia responses, or write functional tests. Business logic is covered by `create-tests-usecase`.
 ---
 
 You are a **senior PHP / Pest engineer**. Job: cover the **transport layer only** of a feature — the contract between an HTTP request and the response shape (JSON, redirect, Inertia render, session, status code). Business behaviour (DB writes, events, jobs, business rules) is **already validated by `create-tests-usecase`** — re-asserting it here is duplication that breaks twice.
 
 Test file lives at `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php`. The `Functional` testsuite is its own block in `phpunit.xml` and uses `RefreshDatabase` (wired in `tests/Pest.php`). Run it in isolation with `./vendor/bin/pest --testsuite=Functional`.
 
-**Why `Functional` and not `Application`?** The DDD `app/Application/` layer (Use Cases) is something entirely different — naming the testsuite the same way breeds confusion. "Functional" here means *whole HTTP request → response* coverage, as opposed to `Feature/UseCase/` (one Use Case in isolation) or `Unit/` (pure Domain).
+**Why `Functional`?** It means *whole HTTP request → response* coverage, as opposed to `Feature/Action/` (one Action in isolation) or `Unit/` (pure helpers + arch guardrails).
 
 ## 1. Identify the Controller and its route(s)
 
 ```bash
 # Controller class + the route that hits it
-ls app/Infrastructure/Http/Controller/<Subject>/
+ls app/Http/Controllers/<Subject>/
 grep -n "<Name>Controller" routes/web.php routes/api.php 2>/dev/null
 ```
 
@@ -61,8 +61,8 @@ Mail::fake();                         // silence real mail sending if any
 
 declare(strict_types=1);
 
-use App\Domain\Event\<Aggregate>\<EventName>;
-use App\Infrastructure\Entity\<Aggregate>;
+use App\Events\<Event>;
+use App\Models\<Aggregate>;
 use Illuminate\Support\Facades\Event;
 
 /*
@@ -70,12 +70,12 @@ use Illuminate\Support\Facades\Event;
 | <Name>Controller — HTTP / Inertia layer
 |--------------------------------------------------------------------------
 | Transport concerns only: response shape, status code, session flash,
-| Domain exception → HTTP translation (see bootstrap/app.php).
-| Business behaviour is covered in tests/Feature/UseCase/<Name>Test.php.
+| validation → HTTP status. Business behaviour is covered in
+| tests/Feature/Action/<Name>Test.php.
 */
 
 it('returns a 201 JSON payload on API success', function () {
-    Event::fake([<EventName>::class]);
+    Event::fake([<Event>::class]);
 
     $response = $this->postJson('/<route>', [
         'email' => 'http.user@example.com',
@@ -88,7 +88,7 @@ it('returns a 201 JSON payload on API success', function () {
         ->assertJsonFragment(['email' => 'http.user@example.com']);
 });
 
-it('returns 422 with field errors when a Domain rule fails', function () {
+it('returns 422 with field errors when a business rule fails', function () {
     <Aggregate>::factory()->create(['email' => 'taken@example.com']);
 
     $response = $this->postJson('/<route>', [
@@ -154,11 +154,11 @@ Common `AssertableInertia` chain operations:
 - `->whereType('items.0.uuid', 'string')` — type-only assertion.
 - `->missing('debug')` — prop absent.
 
-## 6. Domain exception → HTTP translation
+## 6. Validation → HTTP status
 
-`bootstrap/app.php` maps Domain exceptions to HTTP status codes (e.g. `ValidationsException` → 422 with field errors; `EntityNotFoundException` → 404). A controller test is the **right place** to verify that translation works end-to-end. A Use Case test isn't — it asserts that the exception is *thrown*; the controller test asserts that the translation maps it to the correct status + body shape.
+Validation throws `Illuminate\Validation\ValidationException` — both **form** (from `Data::fromRequest`) and **business** (from the Action's `Rules` via `Validator`). Laravel renders it natively: **422 + field errors** for JSON, **redirect-back-with-errors** for web. There is no custom mapping in `bootstrap/app.php` to consult. The controller test is the right place to verify this end-to-end — the Action test only asserts the exception is *thrown*.
 
-Open `bootstrap/app.php` to see what translations are wired, and add one scenario per translation that affects this route.
+If the Action throws some other exception needing a dedicated status (rare), check `bootstrap/app.php` `withExceptions(...)` and add one scenario per mapping that affects this route.
 
 ## 7. Auth / middleware scenarios
 
@@ -195,7 +195,7 @@ $this->getJson('/<api-route>')->assertStatus(401);
 ./vendor/bin/pest                                          # full suite
 ```
 
-If the test fails with a 500 + a Domain exception trace, the translation in `bootstrap/app.php` is missing or wrong — fix it there, not by catching exceptions in the controller.
+If a validation failure surfaces as 500 instead of 422/redirect, the Action or Data is throwing something other than `Illuminate\Validation\ValidationException` — fix the source, not the controller.
 
 ## Anti-patterns to refuse
 
@@ -210,8 +210,7 @@ If the test fails with a 500 + a Domain exception trace, the translation in `boo
 
 ## Sources of truth
 
-- `tests/Functional/Controller/User/CreateUserControllerTest.php` — canonical pattern (JSON 201, JSON 422, web form 302 + errors, web form success + flash).
+- `tests/Functional/Controller/User/CreateUserControllerTest.php` — canonical pattern (JSON 201, JSON 422 form + business, web form 302 + errors, web form success + flash).
 - `routes/web.php`, `routes/api.php` — the route table.
-- `bootstrap/app.php` — Domain exception → HTTP status translation (the layer this skill verifies works end-to-end).
-- `app/Infrastructure/Http/Controller/<Subject>/<Name>Controller.php` — the controller under test.
+- `app/Http/Controllers/<Subject>/<Name>Controller.php` — the controller under test.
 - Inertia testing reference — `Inertia\Testing\AssertableInertia`.

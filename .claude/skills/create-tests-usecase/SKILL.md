@@ -1,253 +1,162 @@
 ---
 name: create-tests-usecase
-description: Generate Pest tests for a Use Case (Application + Domain) — Feature tests with real container + DB assertions, Event/Bus fakes, Domain Service fakes via anonymous classes, plus Unit tests for pure Domain helpers when warranted. Use when asked to test a Use Case, add Use Case tests, cover a Specification, write Domain unit tests, or generate Pest coverage for backend business logic. HTTP/Controller tests are handled by `create-tests-functional`.
+description: Generate Pest tests for an Action and its collaborators — Feature tests with real container + DB assertions, Event/Mail fakes, plus DTO-boundary validation tests and Listener tests. Use when asked to test an Action/use case, cover a business Rule, test an event listener, or generate Pest coverage for backend business logic. HTTP/Controller tests are handled by `create-tests-functional`.
 ---
 
-You are a **senior PHP / Pest engineer**. Job: produce the test coverage for a given Use Case — Feature tests using the real Laravel container + an in-memory SQLite (per `RefreshDatabase`), plus Unit tests for **pure Domain** helpers when the logic warrants it. Lean on Eloquent factories as fixtures; fake Domain Services with anonymous classes.
+You are a **senior Laravel / Pest engineer**. Job: cover an **Action** (`app/Actions/<Name>.php`) and its collaborators — Feature tests on the real container + in-memory SQLite (`RefreshDatabase`), DTO-boundary validation tests, and Listener tests. HTTP/Controller tests belong to `/create-tests-functional`.
 
-Tests run with `./vendor/bin/pest`. Pest already extends `TestCase` and applies `RefreshDatabase` under `tests/Feature` (see `tests/Pest.php`).
+Pest already extends `TestCase` + applies `RefreshDatabase` under `tests/Feature` and `tests/Functional` (see `tests/Pest.php`).
 
-## 1. Identify the Use Case under test
+> The codebase is layered Laravel (Actions + Active Record) — no Repository/Factory interfaces, no Domain ports. See `docs/architecture.md`.
 
-Open and read:
+## 1. Read the Action under test
 
-```bash
-ls app/Application/UseCase/<Name>/
-```
+Open `app/Actions/<Name>.php` and note:
+- **Input DTO** (`app/Data/<Name>Data.php`) — its `rules()` drive form-validation scenarios; its fields drive `fromValues(...)` args.
+- **Return type** of `handle(...)` — a Model? a collection? a scalar?
+- **Business `Rules`** triggered (`new <Rule>` inside a `Validator::make(...)->validate()`) — each is a failure scenario.
+- **Events dispatched** (`<Event>::dispatch(...)`) — each is a side-effect assertion.
+- **Listeners** wired in `app/Providers/EventServiceProvider.php` `$listen` — each event→listener mapping needs a test.
 
-Take note of:
-- **Request fields** (`Request.php`) — these drive your scenario inputs.
-- **Return type** (`UseCase::execute(...)` signature) — Domain entity? `Response`? Void?
-- **Dependencies** in the constructor — repositories, factories, specs, dispatchers, Domain services.
-- **Specifications called** — each `isSatisfiedBy()` branch is a candidate failure scenario.
-- **Events dispatched** — each `$events->dispatch(new X(...))` is a "side effect" assertion.
-- **Jobs wired** — open `app/Infrastructure/Providers/DomainServiceProvider::boot()` and find any `$events->listen(<Event>::class, fn (...) => <Job>::dispatch(...))`. That mapping needs a test.
+If the Action isn't found, **stop and confirm the path** with the user.
 
-If the Use Case isn't found, **stop and confirm the path** with the user before fabricating tests.
-
-## 2. Pick which test files to create
+## 2. Pick the test files
 
 | Test file | Path | When |
 |---|---|---|
-| **Use Case Feature test** | `tests/Feature/UseCase/<Name>Test.php` | Always. Primary coverage. |
-| **Domain Unit test** | `tests/Unit/Domain/<Subject>/<Class>Test.php` | When a Domain helper (Specification with multiple branches, Value Object, Factory in `Domain/Factory/` that isn't trivial) holds enough logic that container-based tests would be wasteful. |
+| **Action Feature test** | `tests/Feature/Action/<Name>Test.php` | Always — primary coverage. |
+| **Listener Feature test** | `tests/Feature/Listener/<Listener>Test.php` | When the Action's event has a listener with a side effect (mail, etc.). |
+| **Domain helper Unit test** | `tests/Unit/<Subject>Test.php` | Only when a pure helper (no DB) holds enough logic that booting the container is wasteful. A `Rule` that queries the DB is **not** this — it's covered in the Action Feature test. |
 
-**HTTP / Controller tests are out of scope here** — they belong to `create-tests-functional` (testsuite `Functional`, path `tests/Functional/Controller/...`). If the Use Case has an HTTP entry, hand off to that skill once this one is done.
+**One file = one subject.** Never mix HTTP and Action assertions — HTTP is `/create-tests-functional`'s job (see `[[feedback_test_layering]]`).
 
-**One file = one test subject.** Never assert on HTTP behaviour and Use Case logic in the same file — split.
-
-## 3. Plan scenarios before writing
-
-For the Use Case Feature test, write a quick list before any code:
+## 3. Plan scenarios (3–6 per Action)
 
 | Scenario | Asserts |
 |---|---|
-| Happy path | return value (entity shape + identity), DB row(s) via `assertDatabaseHas`, event dispatched via `Event::assertDispatched`. |
-| Each Specification failure | `expect(fn () => …)->toThrow(ValidationsException::class)` + `assertDatabaseCount(<table>, <expected unchanged>)`. |
-| **Malformed Request rejected by self-validation** | Construct via `Request::from($invalidPayload)` (hydration only, no `validate()`), call `UseCase::execute(...)`, expect **`App\Domain\Exception\ValidationsException`** (Domain — Laravel exception is translated by `SpatieRequestValidator` adapter) + `assertDatabaseCount(<table>, 0)` + `Event::assertNotDispatched(...)`. Cover only rules the PHP type system can't enforce: `#[Email]` format, `#[Max(N)]` length, `#[Regex]`. Skip `#[Required]` and `#[Enum]` — PHP non-nullable types and typed enum parameters already reject those at construction. HTTP-level 422 / redirect assertions belong in `tests/Functional/`. |
-| Each side effect | Event/Job/Service dispatched with the right payload. One assertion per outgoing message. |
-| Edge cases driven by Request optional fields | Null vs filled propagation through the chain. |
+| Happy path | return value (model identity via `toBeUuid()`, attributes), `assertDatabaseHas`, `Event::assertDispatched`. |
+| Each business Rule failure | `expect(fn () => (new <Name>)->handle(...))->toThrow(ValidationException::class)` + `assertDatabaseCount(<table>, <unchanged>)`. |
+| Malformed input at the DTO boundary | `expect(fn () => <Name>Data::fromValues(/* bad */))->toThrow(ValidationException::class)`. Cover rules PHP types can't enforce (`email` format, `max:N` length, `Rule::enum` value). Skip `required` / non-nullable types — the typed constructor already rejects those. |
+| Optional-field edge cases | null vs filled propagation to the DB. |
 
-Aim for **3–6 scenarios per Use Case**. A flat list of 15 micro-tests is noise.
+`Illuminate\Validation\ValidationException` is the exception everywhere now — both form (DTO) and business (`Rule` via `Validator::make`).
 
-## 4. Fixtures — pick the right tool
+## 4. Fixtures & fakes
 
 | Need | Use |
 |---|---|
-| A pre-existing aggregate in the DB | `User::factory()->create(['email' => '...'])`. Factory lives at `database/factories/<Name>Factory.php`. |
-| Multiple aggregates with shared traits | Factory states: `User::factory()->unverified()->count(3)->create()`. |
-| A pre-existing aggregate **without** persistence (rare in Feature tests) | `User::factory()->make([...])` — returns the model unsaved. |
-| Bypass a Domain Service call | Anonymous class implementing the `Domain/Service/<X>Interface`, bound via `$this->app->instance(<X>Interface>::class, $fake)`. |
-| Bypass async work | `Bus::fake([<Job>::class])` + `Bus::assertDispatched(...)`. |
-| Bypass Domain Event consumers | `Event::fake([<Event>::class])` + `Event::assertDispatched(...)`. |
+| Pre-existing row | `User::factory()->create(['email' => '...'])`. |
+| Multiple with traits | `User::factory()->unverified()->count(3)->create()`. |
+| Assert an event without running listeners | `Event::fake([<Event>::class])` + `Event::assertDispatched(...)`. |
+| Assert a queued mail (Listener test) | `Mail::fake()` + `Mail::assertQueued(<Mailable>::class, fn ($m) => $m->hasTo(...))`. |
 
-**Add a new factory** when the Use Case introduces a new aggregate:
+Add a factory when a new aggregate appears (mirror `database/factories/UserFactory.php`, wire via `#[UseFactory]` + `newFactory()` + `HasFactory`).
 
-```bash
-# Mirror database/factories/UserFactory.php and wire it on the Eloquent model
-# via #[UseFactory(...)] + newFactory() + HasFactory trait.
-```
-
-A factory **only** exists for an `Infrastructure/Entity/<Name>` Eloquent model — there is no concept of "Domain fixture" in this codebase.
-
-## 5. Use Case Feature test — the canonical pattern
+## 5. Action Feature test — canonical pattern
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-use App\Application\UseCase\<Name>\Request;
-use App\Application\UseCase\<Name>\UseCase;
-use App\Domain\Entity\<Aggregate>Interface;
-use App\Domain\Event\<Aggregate>\<EventName>;
-use App\Domain\Exception\ValidationsException;
-use App\Infrastructure\Entity\<Aggregate>;
-use App\Infrastructure\Job\<JobName>;
-use Illuminate\Support\Facades\Bus;
+use App\Actions\<Name>;
+use App\Data\<Name>Data;
+use App\Events\<Event>;
+use App\Models\<Model>;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Validation\ValidationException;
 
-/*
-|--------------------------------------------------------------------------
-| <Name> Use Case
-|--------------------------------------------------------------------------
-| Application Use Case only. HTTP/transport in tests/Functional/Controller/.
-*/
+it('does the happy path and dispatches <Event>', function () {
+    Event::fake([<Event>::class]);
 
-it('does the happy path', function () {
-    Event::fake([<EventName>::class]);
+    $model = (new <Name>)->handle(<Name>Data::fromValues(/* camelCase args */));
 
-    /** @var UseCase $useCase */
-    $useCase = app(UseCase::class);
+    expect($model->uuid)->toBeUuid();
+    // assert meaningful attributes
 
-    $entity = $useCase->execute(new Request(
-        // exact field names from Request.php (camelCase)
-    ));
+    $this->assertDatabaseHas('<table>', ['column' => 'value']);
 
-    expect($entity)->toBeInstanceOf(<Aggregate>Interface::class);
-    expect($entity->getUuid()->toString())->toBeUuid();
-    // assert on each meaningful getter
-
-    $this->assertDatabaseHas('<table>', [
-        'column' => 'value',
-    ]);
-
-    Event::assertDispatched(<EventName>::class, function (<EventName> $event) use ($entity) {
-        return $event->aggregateId()->equals($entity->getUuid());
-    });
+    Event::assertDispatched(<Event>::class, fn (<Event> $e) => $e-><model>->is($model));
 });
 
-it('rejects <precondition> via specification', function () {
-    <Aggregate>::factory()->create(['column' => 'conflicting-value']);
+it('rejects <precondition> via the <Rule> business rule', function () {
+    <Model>::factory()->create(['column' => 'conflicting']);
 
-    /** @var UseCase $useCase */
-    $useCase = app(UseCase::class);
+    expect(fn () => (new <Name>)->handle(<Name>Data::fromValues(/* conflicting */)))
+        ->toThrow(ValidationException::class);
 
-    expect(fn () => $useCase->execute(new Request(/* conflicting input */)))
-        ->toThrow(ValidationsException::class);
-
-    $this->assertDatabaseCount('<table>', 1); // nothing new created
+    $this->assertDatabaseCount('<table>', 1);
 });
 
-it('dispatches the <Job> when the Domain Event fires', function () {
-    Bus::fake([<JobName>::class]);
-
-    /** @var UseCase $useCase */
-    $useCase = app(UseCase::class);
-    $entity = $useCase->execute(new Request(/* valid input */));
-
-    Bus::assertDispatched(
-        <JobName>::class,
-        fn (<JobName> $job) => $job-><aggregate>Uuid === $entity->getUuid()->toString(),
-    );
-});
+it('rejects malformed input at the DTO boundary', function (callable $build) {
+    expect($build)->toThrow(ValidationException::class);
+})->with([
+    'invalid email' => [fn () => <Name>Data::fromValues(/* bad email */)],
+    'field too long' => [fn () => <Name>Data::fromValues(/* over max */)],
+]);
 ```
 
-Rules embedded above:
-- **Resolve via `app(UseCase::class)`** — use real bindings, real Eloquent, real SQLite. The architecture is set up so this is fast.
-- **Never call `User::create([...])`** to build a precondition — use the factory, or the Use Case under test itself.
-- **Fake only what you assert on** — `Event::fake([X])` not `Event::fake()` (the latter silences everything, including unrelated listeners).
-- **Custom Pest expectations available**: `toBeUuid()`, `toBeOne()` (see `tests/Pest.php`). Use them where they read better.
-- **Strict types declaration at the top of every test file.**
-- **`it('...')` description in present-simple, English** ("creates", "rejects", "dispatches"). Match the existing style.
+Rules embedded:
+- **Instantiate the Action with `new <Name>`** — it has no constructor dependencies. (Resolving via `app()` also works but is unnecessary.)
+- **Build the DTO via `fromValues(...)`** — never `new <Name>Data(...)` (forbidden, validation-bypassing).
+- **Fake only what you assert** — `Event::fake([X])`, not bare `Event::fake()` (which would also silence the listener you may want to run).
+- `it('...')` in present-simple English. `declare(strict_types=1)` at the top.
+- Custom expectations: `toBeUuid()`, `toBeOne()` (`tests/Pest.php`).
 
-## 6. Domain Service fakes — anonymous classes
-
-When the Use Case calls a `Domain/Service/<X>Interface`, fake it inline:
-
-```php
-$fakeMailer = new class implements MailerInterface {
-    /** @var list<array<string, mixed>> */
-    public array $calls = [];
-
-    public function send(string $toEmail, ?string $toName, string $subject, string $view, array $context = []): void
-    {
-        $this->calls[] = compact('toEmail', 'toName', 'subject', 'view', 'context');
-    }
-};
-
-$this->app->instance(MailerInterface::class, $fakeMailer);
-
-app(UseCase::class)->execute(new Request(/* ... */));
-
-expect($fakeMailer->calls)->toHaveCount(1);
-expect($fakeMailer->calls[0]['toEmail'])->toBe('expected@example.com');
-```
-
-Why anonymous classes:
-- Zero ceremony, lives next to the assertion.
-- No file to maintain.
-- Captures only what *that* test asserts on.
-
-Reuse the fake across `it()` blocks only if 3+ tests share the exact same shape — otherwise duplicate.
-
-## 7. Unit tests — only when Domain logic justifies it
-
-Add a Unit test under `tests/Unit/Domain/<Subject>/` when:
-
-- A Specification has **3+ branches** worth covering in isolation (faster than booting the container).
-- A Value Object has **non-trivial construction or comparison** (`equals`, `withX(...)`).
-- A Domain Service interface has a **pure helper implementation in Domain** (rare — most live in Infrastructure).
-
-Pattern:
+## 6. Listener Feature test
 
 ```php
 <?php
 
 declare(strict_types=1);
 
-use App\Domain\Specification\Can<Verb><Aggregate>;
-use App\Domain\Repository\<Aggregate>RepositoryInterface;
+use App\Events\<Event>;
+use App\Mail\<Mailable>;
+use App\Models\<Model>;
+use Illuminate\Support\Facades\Mail;
 
-it('passes when no conflict is found', function () {
-    $repo = new class implements <Aggregate>RepositoryInterface {
-        public function findActiveByEmail(string $email): ?<Aggregate>Interface { return null; }
-        // implement the other methods to satisfy the interface
-    };
+it('queues <Mailable> when <Event> fires', function () {
+    Mail::fake();
 
-    $spec = new Can<Verb><Aggregate>($repo);
+    $model = <Model>::factory()->create([/* ... */]);
 
-    expect($spec->isSatisfiedBy('any@example.com', exceptionMode: false))->toBeTrue();
+    <Event>::dispatch($model);
+
+    Mail::assertQueued(<Mailable>::class, fn (<Mailable> $mail) => $mail->hasTo($model->email));
 });
 ```
 
-Rules for Unit tests:
-- **Zero Laravel facades, zero `app()`**, zero DB. The point is speed and isolation.
-- Use anonymous classes (or simple stubs) for Domain repository interfaces. **No mocking library** — the project hasn't reached for one and doesn't need it.
-- One file per Domain class under test.
+Do **not** `Event::fake()` here — you want the real listener to run so the Mailable is queued.
 
-## 8. Run and iterate
+## 7. Unit tests — only for pure, DB-free helpers
+
+Rare in this codebase (most logic touches Eloquent). If a genuinely pure helper exists: zero facades, zero `app()`, zero DB, one file per subject. The arch tests in `tests/Unit/` are not yours to touch unless adding a guardrail.
+
+## 8. Run
 
 ```bash
-./vendor/bin/pest tests/Feature/UseCase/<Name>Test.php   # the file you just wrote
-./vendor/bin/pest --filter="creates a user"               # one scenario
-./vendor/bin/pest                                          # full suite
-composer test                                              # config:clear + pint + pest
+./vendor/bin/pest tests/Feature/Action/<Name>Test.php
+./vendor/bin/pest --filter="does the happy path"
+./vendor/bin/pest                                       # full suite
 ```
 
-If a test is **flaky**, suspect:
-- DB state leaking between tests (forgot `RefreshDatabase` — but `tests/Pest.php` applies it across `Feature`, so this means a test in `Unit/` hit the DB; move it).
-- A `Bus::fake()` / `Event::fake()` placed *after* the dispatch.
-- A real listener firing because you only faked the event class but the listener does I/O — fake the consequence (`Bus::fake`) too.
+Flaky? Suspect: a `Mail::fake()`/`Event::fake()` placed *after* the trigger; a real listener doing I/O because you faked only the event class; a DB-touching test misplaced under `tests/Unit`.
 
 ## Anti-patterns to refuse
 
-- **Mocking repositories in a Use Case test.** The real `EloquentUserRepository` + SQLite is fine and exposes the binding wiring at the same time. Mocks here only catch interface contract drift, not Use Case behaviour.
-- **HTTP assertions in a Use Case test, or Use Case assertions in a Controller test.** Each file owns one layer — see `[[feedback-test-layering]]` memory.
-- **`User::create([...])` to seed state.** Use the factory. The factory enforces UUID + defaults; manual creation skips them.
-- **`Event::fake()` (bare) when you only assert on one event.** Use `Event::fake([X::class])` so unrelated listeners still run — otherwise you silence the very Job→Event mapping you should be verifying elsewhere.
-- **Asserting `Queue::assertPushed` on the Use Case test when the Job is dispatched by a Domain Event listener.** Use `Bus::fake([<Job>::class])`, and assert dispatch happened. The listener wiring lives in `DomainServiceProvider`; the test confirms the wiring still works.
-- **Tests against private methods.** If you need to reach in, refactor toward a Domain helper and test that.
-- **Magical shared `beforeEach`** that prepares fixtures for unrelated tests. Inline the setup so each `it()` reads top-to-bottom.
-- **Naming a test `it('test creates user')`.** Drop `test`. Lowercase. Match the verb the Use Case performs.
-- **Asserting on the `password` / `remember_token` columns.** They're factory leftovers (auth scaffolding), not part of the Use Case contract.
+- **`new <Name>Data(...)` in a test.** Use `fromValues` / `fromRequest` so validation runs (and so the AST guardrail stays honest).
+- **HTTP assertions in an Action test** (status codes, redirects) — that's `/create-tests-functional`.
+- **`User::create([...])` to seed state.** Use the factory (it fills uuid + defaults).
+- **Bare `Event::fake()`** when asserting one event — silences listeners you may need.
+- **Re-testing form validation that the typed constructor already enforces** (`required`, enum type) — cover only format/length/enum-value rules.
+- **Asserting on `password` / `remember_token`** — factory/auth leftovers, not the use case contract.
+- **`it('test creates user')`** — drop `test`, lowercase, match the verb.
 
 ## Sources of truth
 
-- `tests/Feature/UseCase/CreateUserTest.php` — canonical Use Case test.
-- `tests/Feature/UseCase/SendWelcomeEmailTest.php` — canonical pattern for **faking a Domain Service** via anonymous class.
-- `tests/Unit/ArchTest.php` — Unit test about the layering itself — leave it alone unless adding allow-list entries.
-- `tests/Pest.php` — `RefreshDatabase` mapping, custom expectations (`toBeUuid`, `toBeOne`).
-- `database/factories/UserFactory.php` — canonical fixture/factory.
-- `app/Infrastructure/Entity/User.php` — how an Eloquent model is wired to its factory via `#[UseFactory(...)]` + `newFactory()`.
-- `app/Infrastructure/Providers/DomainServiceProvider.php` — bindings and event-to-job listeners; consult to know which Jobs to assert against.
+- `tests/Feature/Action/CreateUserTest.php` — canonical Action test (happy path + business rule).
+- `tests/Feature/Action/SubmitContactRequestTest.php` — DTO-boundary validation via dataset.
+- `tests/Feature/Listener/SendWelcomeEmailTest.php` — `Mail::fake` + listener.
+- `tests/Pest.php` — `RefreshDatabase` mapping + custom expectations.
+- `database/factories/UserFactory.php` — canonical factory.
+- `app/Providers/EventServiceProvider.php` — event→listener map (what to assert).

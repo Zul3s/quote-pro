@@ -37,13 +37,12 @@
 ## Implementation TODO
 
 ### Backend
-- [ ] Use Case `app/Application/UseCase/<Name>/` — via `/create-usecase`
-- [ ] Domain interfaces (Entity / Repository / Factory / Specification / Event) — via `/create-usecase`
-- [ ] Eloquent model + repository in `app/Infrastructure/Entity/` and `app/Infrastructure/Repository/`
-- [ ] Migration `database/migrations/...`
-- [ ] Controller + route in `routes/web.php`
-- [ ] Bindings updated in `app/Infrastructure/Providers/DomainServiceProvider.php`
-- [ ] Use Case tests `tests/Feature/UseCase/<Name>Test.php` — via `/create-tests-usecase`
+- [ ] Action `app/Actions/<Name>.php` + input DTO `app/Data/<Name>Data.php` — via `/create-usecase`
+- [ ] Business rules `app/Rules/<Rule>.php` (if any) — via `/create-usecase`
+- [ ] Native Event + Listener (+ Mailable) for side effects — via `/create-usecase`
+- [ ] Eloquent model `app/Models/<Name>.php` + migration `database/migrations/...` — via `/create-usecase`
+- [ ] Controller + named route in `routes/web.php` — via `/create-controller`
+- [ ] Action tests `tests/Feature/Action/<Name>Test.php` — via `/create-tests-usecase`
 - [ ] Controller tests `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php` — via `/create-tests-functional`
 
 ### Frontend
@@ -55,7 +54,7 @@
 
 ### Final validation
 - [ ] `./vendor/bin/pest` — full suite green
-- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php` — layering still passes
+- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails pass
 - [ ] `npm run lint:check && npm run types:check && npm run format:check`
 - [ ] Manual smoke: 1 happy path + 1 error path
 

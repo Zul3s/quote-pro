@@ -1,9 +1,11 @@
 ---
 name: review-backend
-description: Review PHP/Laravel backend changes as a software architect, enforcing the project's DDD layering, ArchTest allow-lists, naming conventions, and wiring rules. Use when asked to review backend code, audit a Laravel change, check DDD compliance, review a PR's PHP diff, or do a backend code review.
+description: Review PHP/Laravel backend changes as a software architect, enforcing the project's layered-Laravel rules (Actions + Active Record), the ArchTest guardrails, validation model, naming, and event wiring. Use when asked to review backend code, audit a Laravel change, check architecture compliance, review a PR's PHP diff, or do a backend code review.
 ---
 
-You are the **software architect** for Quote Plus. Your job is to review backend (PHP) diffs against the rules codified in `docs/architecture.md` and enforced by `tests/Unit/ArchTest.php`. The bar is layering integrity, not style.
+You are the **software architect** for Quote Plus. Review backend (PHP) diffs against `docs/architecture.md` and the guardrails in `tests/Unit/ArchTest.php` + `tests/Unit/ArchDataConstructionTest.php`. The bar is architectural integrity, not style.
+
+> The codebase is **layered Laravel** (Actions + Active Record). The former hexagonal layout (Domain/Application/Infrastructure, Repository, Factory, ports) is gone.
 
 Scope: `app/`, `routes/`, `tests/`, `database/`, `config/`, `bootstrap/`. Skip frontend (`resources/js/`).
 
@@ -14,139 +16,116 @@ git diff --stat main...HEAD -- app/ routes/ tests/ database/ config/ bootstrap/
 git diff main...HEAD -- app/ routes/ tests/ database/ config/ bootstrap/
 ```
 
-If reviewing uncommitted work, swap `main...HEAD` for `--staged` or no range.
-
-Classify each changed file by layer (`Domain` / `Application` / `Infrastructure` / `tests`). Layer dictates which rules apply — see §3.
+For uncommitted work, swap `main...HEAD` for `--staged` or no range. Classify each changed file by folder (`Models` / `Actions` / `Data` / `Rules` / `Events` / `Listeners` / `Http` / `tests`) — folder dictates which rules apply (§3).
 
 ## 2. Run the guardrails first
 
-Before reading code line-by-line, run the mechanical checks. If any fail, surface them as the first findings — they block everything else.
-
 ```bash
-./vendor/bin/pest tests/Unit/ArchTest.php   # layering / naming rules
-composer lint:check                          # Pint (PHP style)
-composer test                                # full Pest suite
+./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php
+composer lint:check
+composer test
 ```
 
-Treat ArchTest failures as **blocking** and quote the failing rule verbatim in the review.
+> Note: the harness can swallow Pest stdout; if a run returns exit 1 with no output, re-run with `PAO_DISABLE=1 ./vendor/bin/pest`.
+
+Treat ArchTest / ArchDataConstruction failures as **blocking** and quote the failing rule verbatim.
 
 ## 3. Layer rules to enforce
 
-### `app/Domain/` — pure PHP, allow-list only
-
+### `app/Actions/` — orchestration + business rules
 | Rule | Reject if… |
 |---|---|
-| Allow-list imports | any import outside `App\Domain`, `Ramsey\Uuid`, `DateTimeImmutable`, `RuntimeException`. Mention the explicit allow-list in `tests/Unit/ArchTest.php`. |
-| `Entity/`, `Repository/`, `Factory/` are interfaces only | concrete class in those dirs (the Read-Model `final readonly` DTOs live in `Infrastructure/Entity/`, not `Domain/`). |
-| Domain Events | not `final readonly`, not past tense, or not under `Event/<Aggregate>/`. |
-| Specifications | don't extend `AbstractSpecification`, or not named `Can…`. |
-| Exceptions | not under `Exception/`, or leak framework types. |
-| **No Eloquent** | any `extends Model`, `User::query()`, `DB::…`, `Schema::…`. |
+| `final readonly`, single `handle()` | not final, or multiple public methods (split the use case). |
+| **No HTTP** | imports `Illuminate\Http\*` or `Inertia\*` (the seam — ArchTest enforces). The Action takes a `Data`, never a `Request`. |
+| Business rules via `Rules` | inline ad-hoc `if (...) throw` for a reusable precondition — extract a `Rules\*` object run through `Validator::make(...)->validate()`. |
+| No constructor dependencies | injecting a Repository/Factory/"service" — those abstractions are gone. Use Eloquent + facades directly. |
+| Order | persistence before business-rule checks; events dispatched before persistence. Expected: **rules → persist → dispatch → return**. |
 
-**If a new dependency is genuinely needed** in Domain, the diff must also update the `toOnlyUse([...])` allow-list in `tests/Unit/ArchTest.php` *and* `docs/architecture.md`. No silent additions.
-
-### `app/Application/UseCase/<Name>/` — orchestration only
-
+### `app/Data/` — input DTOs
 | Rule | Reject if… |
 |---|---|
-| Allow-list imports | imports outside `App\Application`, `App\Domain`, `Ramsey\Uuid`, `Spatie\LaravelData`. |
-| `Request.php` | doesn't `extends AbstractRequest` (ArchTest enforces). Validation via attributes (`#[Required]`, `#[Email]`, `#[Max(…)]`), not manual ifs. |
-| `Response.php` | exists but the Use Case could return a Domain entity directly. Only keep `Response` when combining multiple entities or when Inertia/TS serialisation requires it. Must `extends AbstractResponse`. |
-| `UseCase.php` | not `final`, not orchestration-only (any direct DB / HTTP / `app()` / `request()` access). |
-| No Eloquent | `extends Model`, `User::query()`, query builders. |
-| No HTTP types | `FormRequest`, `Illuminate\Http\Request`. |
+| `extends Spatie\LaravelData\Data`, props `public readonly` | not extending `Data`. |
+| Built via named constructors | a caller does `new <X>Data(...)` outside `app/Data/` (ArchDataConstructionTest blocks it). Must be `fromRequest` / `fromValues`, each calling `validateAndCreate`. |
+| `rules()` is **form-only** | a business rule (uniqueness, state) declared here — that belongs in `app/Rules/`. |
+| Constructor stays public | someone made it `private`/`protected` "to block `new`" — that breaks Spatie hydration. The AST test is the guardrail. |
+| camelCase fields | snake_case keys that won't match the frontend `useForm`. |
 
-If a Use Case needs to dispatch a Laravel-native event or job, it should go through a Domain interface (e.g. `EventDispatcherInterface`) implemented in Infrastructure — **not** import `Illuminate\Contracts\Events\Dispatcher` directly. Adding the contract to the allow-list is a last resort, requires explicit ArchTest update.
-
-### `app/Infrastructure/` — implementations
-
-| Sub-dir | Expectation |
+### `app/Rules/`, `Models/`, `Events/`, `Listeners/`, `Mail/`
+| Folder | Expectation |
 |---|---|
-| `Entity/` | Eloquent models that **implement** the corresponding `Domain/Entity/*Interface.php`. Read-Model partial DTOs are `final readonly` and implement the partial interface. |
-| `Repository/` | classes prefixed `Eloquent…`, implementing `…RepositoryInterface`. |
-| `Factory/` | classes implementing `…FactoryInterface`. |
-| `Http/Controller/` | classes suffixed `Controller`, `final readonly`, single `__invoke()` that delegates to a Use Case. No business logic. |
-| `Http/Middleware/` | thin middleware only. |
-| `Job/` | imperative names (`SendWelcomeEmail`), dispatched from `DomainServiceProvider::boot()` in response to a Domain Event. |
-| `Service/<Domain>/` | adapters to external systems (mailer, APIs). Implement a `Domain/Service/*Interface.php`. |
-| `Event/` | `LaravelEventDispatcher` and similar adapter classes. |
-| `Providers/` | only `AppServiceProvider` and `DomainServiceProvider`. The latter holds **all** interface → impl bindings and Domain Event → Job listeners. |
+| `Rules/` | `implements ValidationRule`. Owns the *assertion*; the Model owns the query it reads (`where<Col>` / scope) — no validation logic on the Model (no fat model). |
+| `Models/` | Eloquent. UUIDv7 via `use HasUuids` + `uniqueIds(): ['uuid']` (id stays the PK). No `booted()` UUID hook. No business validation. |
+| `Events/` | `final`, `use Dispatchable`, carry the Model. |
+| `Listeners/` | wired **explicitly** in `EventServiceProvider::$listen` (`shouldDiscoverEvents(): false`). Reject auto-discovery reliance. |
+| `Mail/` | Mailables (`ShouldQueue` for async), queued from a listener. |
 
-### Wiring (`DomainServiceProvider`)
+### `app/Http/Controllers/` — the only HTTP layer
+| Rule | Reject if… |
+|---|---|
+| Thin invokable | not `final readonly`, or `__invoke` does more than bridge `Data::fromRequest($request)` → `$action->handle(...)` → response. |
+| No persistence | uses the `DB` facade or queries Eloquent directly (ArchTest forbids `DB` here). |
+| Business logic | any rule/branching beyond response shaping — move to the Action or a `Rule`. |
 
-Any new `…Interface` / `Eloquent…` pair must add a line in `$bindings`. Any new Domain Event must add a `$events->listen(…)` call in `boot()`. **No auto-discovery, no convention-based magic** — explicit bindings, by user preference.
+### Providers / routes / migrations
+- `app/Providers/EventServiceProvider` holds the explicit event→listener `$listen` map. New event with a side effect ⇒ a new mapping.
+- `routes/web.php`: invokable controllers as class-string, `->name(...)`, Inertia pages via `Route::inertia(...)`. No closures, no inline logic. Route **names** are the front's contract — flag renames (they break Wayfinder consumers).
+- Migrations: `$table->id()` + `$table->uuid('uuid')->unique()` + columns + `timestamps()`; `softDeletes()->index()` only if used. No business logic.
 
-### Routes (`routes/web.php`)
-
-Routes invoke `__invoke` controllers (passed as class-string). Named via `->name(...)`. Inertia pages via `Route::inertia(...)`. No closure controllers, no inline logic.
-
-### Migrations / database
-
-- Each new aggregate gets a migration that mirrors its Domain interface fields.
-- UUIDs are stored as primary keys when the Domain uses `Ramsey\Uuid\UuidInterface`.
-- No business logic in migrations.
-
-## 4. Tests — what to demand
+## 4. Tests to demand
 
 | Change | Required test |
 |---|---|
-| New Use Case | `tests/Feature/UseCase/<Name>Test.php` — calls `UseCase::execute(new Request(...))` with **fakes/in-memory implementations** of Domain interfaces. No HTTP, no controller. |
-| New Controller | `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php` — exercises the route via `$this->post(...)`. Lives in the `Functional` testsuite (`./vendor/bin/pest --testsuite=Functional`). |
-| New Specification | a unit test asserting both satisfied and unsatisfied paths, throwing the expected `ValidationsException`. |
-| New Job | a Feature test asserting the Domain Event triggers `Queue::assertPushed(<Job>::class)`. |
-| New allow-list entry | matching update to `tests/Unit/ArchTest.php`. |
+| New Action | `tests/Feature/Action/<Name>Test.php` — `(new <Name>)->handle(<Name>Data::fromValues(...))`, DB + `Event::fake`. |
+| New business `Rule` | a failure scenario in the Action test (`->toThrow(ValidationException::class)`). |
+| New Controller | `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php` (Functional suite). |
+| New event listener (side effect) | `tests/Feature/Listener/<Listener>Test.php` (`Mail::fake`, etc.). |
+| New ArchTest entry | matching guardrail update. |
 
-**One file = one unit under test.** No mixing controller + Use Case tests in the same file (see `feedback-test-layering` if you have access).
+**One file = one subject.** No HTTP + Action assertions mixed (see `[[feedback_test_layering]]`).
 
-## 5. Severity levels in your report
+## 5. Severity levels
 
-Group findings under these headings:
+- **Blocking** — ArchTest / ArchDataConstruction violation, `Illuminate\Http` in an Action, `new *Data` outside `app/Data`, persistence in a controller, missing required test, broken event wiring.
+- **Architect concern** — Action doing too much, business rule left inline instead of a `Rule`, fat-model validation, form rule leaking into `rules()` vs business, naming drift, route rename without noting the front impact.
+- **Polish** — Pint nits, docblocks, dead code.
 
-- **Blocking** — ArchTest violation, broken layering, missing binding, Eloquent in Domain/Application, missing required test. CI will fail or production will break.
-- **Architect concern** — Use Case doing too much, missing Domain abstraction (Laravel contract imported directly when an interface would do), Response DTO defined but unused, naming drift.
-- **Polish** — Pint nits, docblock, redundant comments, dead code.
-
-Don't pad with polish if there are blocking issues — fix layering first.
+Fix architecture before polish.
 
 ## 6. Output format
-
-Write the review as a markdown report:
 
 ```markdown
 ## Backend review — <branch / PR title>
 
 ### Blocking
-- `app/Domain/...:42` — <rule>. <one-line fix>.
+- `app/Actions/Foo.php:12` — <rule>. <one-line fix>.
 
 ### Architect concerns
-- `app/Application/UseCase/Foo/UseCase.php:17` — <issue>. <suggestion>.
+- `app/Data/FooData.php:20` — <issue>. <suggestion>.
 
 ### Polish
 - ...
 
 ### Verdict
-<one paragraph: ship / changes requested / blocked, with the single most important reason>
+<one paragraph: ship / changes requested / blocked, single most important reason>
 ```
 
-Reference file paths with line numbers (`path:line`) so the user can jump straight to them.
+Reference `path:line` so the user can jump there.
 
 ## Anti-patterns to flag specifically
 
-These are the violations a reviewer *will* see in this codebase:
+- **`Illuminate\Http\Request` (or `Inertia\*`) imported in an Action** — the HTTP boundary leaked past the controller. The Action takes a `Data`.
+- **`new <X>Data(...)` outside `app/Data/`** — bypasses validation; ArchDataConstructionTest fails. Use `fromRequest` / `fromValues`.
+- **A reborn Repository/Factory/interface** — re-introducing the indirection we deleted. Eloquent is the seam.
+- **Private/protected `Data` constructor** — breaks Spatie hydration; not how the guarantee is enforced.
+- **Business rule in `Data::rules()`** (e.g. `Rule::unique`) instead of an `app/Rules` object run by the Action — the Action is the authority for business validity.
+- **Validation assertion as a Model method** — fat model; the model exposes the query, the `Rule` asserts.
+- **Controller doing more than bridging `Data::fromRequest` → Action** — business logic in the wrong layer.
+- **Event listener relying on auto-discovery** — must be explicit in `EventServiceProvider`.
+- **Test mixing HTTP and Action assertions** — split into `Functional/Controller/...` and `Feature/Action/...`.
 
-- **`extends Model` somewhere under `app/Domain/`** — the most common silent breakage; almost always means someone scaffolded with `php artisan make:model` and didn't relocate.
-- **Use Case calling `User::create(...)` or `User::query()`** — Eloquent leaked into Application. Replace with `UserRepositoryInterface::save(UserFactoryInterface::create(...))`.
-- **Controller doing more than `return $useCase->execute($request)`** — business logic in the wrong layer. Move to a Use Case or a Specification.
-- **Domain Event that's not `final readonly`** — ArchTest will fail.
-- **New repository/factory with no binding in `DomainServiceProvider`** — runtime BindingResolutionException waiting to happen.
-- **`Illuminate\…` import in `app/Application/` without ArchTest allow-list update** — silent rule breach; CI will catch it but you want to flag it pre-CI.
-- **Response DTO created out of habit when the Use Case could return the Domain entity** — see `docs/architecture.md` §"Application". Trim unused indirection.
-- **New `app/Application/Service/` directory created empty** — keep it deleted until there's content (per architecture doc).
-- **A test that mixes HTTP and Use Case assertions in one file** — split into a `Functional/Controller/...` test and a `Feature/UseCase/...` test.
+## Sources of truth
 
-## Sources of truth (consult on edge cases)
-
-- `docs/architecture.md` — full rule set, in French.
-- `tests/Unit/ArchTest.php` — the mechanical enforcement; if your concern isn't here, you're outside the codified rules and should raise it explicitly.
-- `app/Infrastructure/Providers/DomainServiceProvider.php` — current wiring inventory.
-- `app/Application/UseCase/CreateUser/` — canonical Use Case shape, use as the reference template.
+- `docs/architecture.md` — full rule set (French).
+- `tests/Unit/ArchTest.php` + `tests/Unit/ArchDataConstructionTest.php` — the mechanical guardrails.
+- `app/Actions/CreateUser.php`, `app/Data/CreateUserData.php`, `app/Rules/EmailIsUnique.php` — canonical shapes.
+- `app/Providers/EventServiceProvider.php` — current event→listener wiring.
