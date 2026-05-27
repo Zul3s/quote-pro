@@ -44,6 +44,7 @@ For the Use Case Feature test, write a quick list before any code:
 |---|---|
 | Happy path | return value (entity shape + identity), DB row(s) via `assertDatabaseHas`, event dispatched via `Event::assertDispatched`. |
 | Each Specification failure | `expect(fn () => …)->toThrow(ValidationsException::class)` + `assertDatabaseCount(<table>, <expected unchanged>)`. |
+| **Malformed Request rejected by self-validation** | Construct via `Request::from($invalidPayload)` (hydration only, no `validate()`), call `UseCase::execute(...)`, expect **`App\Domain\Exception\ValidationsException`** (Domain — Laravel exception is translated by `SpatieRequestValidator` adapter) + `assertDatabaseCount(<table>, 0)` + `Event::assertNotDispatched(...)`. Cover only rules the PHP type system can't enforce: `#[Email]` format, `#[Max(N)]` length, `#[Regex]`. Skip `#[Required]` and `#[Enum]` — PHP non-nullable types and typed enum parameters already reject those at construction. HTTP-level 422 / redirect assertions belong in `tests/Functional/`. |
 | Each side effect | Event/Job/Service dispatched with the right payload. One assertion per outgoing message. |
 | Edge cases driven by Request optional fields | Null vs filled propagation through the chain. |
 

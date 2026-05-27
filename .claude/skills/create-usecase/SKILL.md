@@ -220,11 +220,13 @@ use App\Domain\Event\EventDispatcherInterface;
 use App\Domain\Event\<Aggregate>\<EventName>;
 use App\Domain\Factory\<Aggregate>FactoryInterface;
 use App\Domain\Repository\<Aggregate>RepositoryInterface;
+use App\Domain\Service\RequestValidatorInterface;
 use App\Domain\Specification\Can<Verb><Aggregate>;
 
 final readonly class UseCase
 {
     public function __construct(
+        private RequestValidatorInterface $validator,
         private <Aggregate>FactoryInterface $factory,
         private <Aggregate>RepositoryInterface $repository,
         private EventDispatcherInterface $events,
@@ -233,6 +235,8 @@ final readonly class UseCase
 
     public function execute(Request $request): <Aggregate>Interface
     {
+        $this->validator->validate($request);
+
         $this->spec->isSatisfiedBy($request->/* relevant field */);
 
         $entity = $this->factory->create(/* map Request fields */);
@@ -254,7 +258,8 @@ Rules:
 - `final readonly class UseCase` — `final` is enforced by ArchTest.
 - Constructor takes **only** Domain interfaces (`...Interface`) and Specifications (concrete classes are fine because they're in Domain). Never an Eloquent model, never `Illuminate\Http\Request`, never `app()` / `request()`.
 - `execute(Request $request)` is the single entry point. No other public methods.
-- Order inside `execute`: **spec → factory → repository → events → return**.
+- **First line is always `$this->validator->validate($request);`** — the Use Case is self-defending: the Domain-level `RequestValidatorInterface` translates Spatie's `Illuminate\Validation\ValidationException` into the Domain's `ValidationsException` (mapped to HTTP 422 / Inertia errors by `bootstrap/app.php`). Application stays framework-free; the metier holds regardless of caller (HTTP Controller, async Job, CLI, scheduled task). PHP types alone don't catch `#[Email]` / `#[Max(N)]` violations once someone calls `new Request(...)` directly, so a re-validation is the only honest contract.
+- Order inside `execute`: **validate → spec → factory → repository → events → return**.
 - Return type: prefer the Domain entity (`UserInterface`) or `iterable<XxxInterface>`. Add a `Response` DTO only when the payload is a combination of entities or must be serialised to Inertia/TypeScript.
 
 ### When (and only when) you write a Response
