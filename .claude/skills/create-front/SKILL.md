@@ -11,7 +11,7 @@ Tests are out of scope. Use Inertia for **all** server interaction — never a r
 
 Before scaffolding, pin:
 - **The page or component** — Inertia page (lives in `resources/js/pages/...`) or feature component (lives in `resources/js/components/<feature>/`)?
-- **The backend contract** — what Use Case will this hit? What `Request` fields does it expect? (`app/Application/UseCase/<Name>/Request.php` is the source of truth.) What does the controller return as Inertia props?
+- **The backend contract** — what Action will this hit? What fields does its input `Data` expect? (`app/Data/<Name>Data.php` is the source of truth.) What does the controller return as Inertia props?
 - **Form, list, detail, dashboard, modal?** — picks the primitive set.
 
 If any of these is unclear, ask before writing. A page built against the wrong DTO shape is a re-do.
@@ -166,7 +166,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { store } from '@/actions/App/Infrastructure/Http/Controller/User/CreateUserController';
+import { store } from '@/actions/App/Http/Controllers/User/CreateUserController';
 
 export default function CreateUser() {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -222,7 +222,7 @@ export default function CreateUser() {
 
 Form rules:
 - **`useForm({ ... })` initial keys = backend Request fields** (exact names).
-- **Submit URL = Wayfinder action helper**, not a literal string. Import from `@/actions/App/Infrastructure/Http/Controller/...`.
+- **Submit URL = Wayfinder action helper**, not a literal string. Import from `@/actions/App/Http/Controllers/...`.
 - **Errors render inline next to the field**, sourced from `errors`. No client-side revalidation of what `spatie/laravel-data` already enforces.
 - **`processing` drives `disabled`** on the submit button and any related controls.
 - **`reset()` on success** unless the page navigates away (Inertia handles redirect).
@@ -283,7 +283,7 @@ If `tsc` complains about `Props` shape, the discrepancy is between the Inertia c
 
 ## Sources of truth
 
-- `app/Application/UseCase/<Name>/Request.php` — the field names + validation your `useForm` must mirror.
+- `app/Data/<Name>Data.php` — the field names + validation your `useForm` must mirror.
 - `resources/js/pages/users/create.tsx` — current reference (will move to shadcn-based on first refactor).
 - `resources/js/lib/utils.ts` — `cn()` helper.
 - `resources/css/app.css` — Tailwind v4 theme config.

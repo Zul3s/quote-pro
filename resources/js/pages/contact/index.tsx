@@ -1,6 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import type { FormEventHandler } from 'react';
-import SubmitContactRequestController from '@/actions/App/Infrastructure/Http/Controller/ContactRequest/SubmitContactRequestController';
+import SubmitContactRequestController from '@/actions/App/Http/Controllers/ContactRequest/SubmitContactRequestController';
 import { Button } from '@/components/ui/button';
 import {
     Card,

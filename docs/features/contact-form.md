@@ -60,8 +60,8 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 ## Implementation TODO
 
 ### Backend
-- [x] Use Case `app/Application/UseCase/SubmitContactRequest/` (UseCase + Request, pas de Response — retourne l'entité Domain) — via `/create-usecase`
-- [x] Domain interfaces : `ContactRequestInterface` (entity), `ContactRequestRepositoryInterface`, `ContactRequestFactoryInterface`, event `ContactRequestSubmitted`, value objects / enums `RequestType` et `Deadline` — via `/create-usecase`
+- [x] Use Case `app/Application/UseCase/SubmitContactRequest/` (UseCase + Request, pas de Response — retourne l'entité Domain) — via `/create-action`
+- [x] Domain interfaces : `ContactRequestInterface` (entity), `ContactRequestRepositoryInterface`, `ContactRequestFactoryInterface`, event `ContactRequestSubmitted`, value objects / enums `RequestType` et `Deadline` — via `/create-action`
 - [x] Eloquent model `app/Infrastructure/Entity/ContactRequest.php` implémentant `ContactRequestInterface`
 - [x] Repository `app/Infrastructure/Repository/EloquentContactRequestRepository.php`
 - [x] Factory `app/Infrastructure/Factory/ContactRequestFactory.php`
@@ -70,7 +70,7 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 - [x] Routes dans `routes/web.php` : `GET /` → `contact/index`, `POST /contact-requests` (middleware `throttle:contact`) → submit, `GET /thank-you` → `contact/thank-you`
 - [x] Rate limiter `contact` défini dans `app/Infrastructure/Providers/AppServiceProvider.php` (ou dédié) : `RateLimiter::for('contact', fn (Request $r) => Limit::perMinute(5)->by($r->ip()))`
 - [x] Bindings ajoutés dans `app/Infrastructure/Providers/DomainServiceProvider.php` : `ContactRequestRepositoryInterface` → `EloquentContactRequestRepository`, `ContactRequestFactoryInterface` → `ContactRequestFactory` (event `ContactRequestSubmitted` **sans listener** dans cette feature)
-- [x] Use Case tests `tests/Feature/UseCase/SubmitContactRequestTest.php` (happy path + persistance + dispatch event + validation Request) — via `/create-tests-usecase`
+- [x] Use Case tests `tests/Feature/UseCase/SubmitContactRequestTest.php` (happy path + persistance + dispatch event + validation Request) — via `/create-tests-action`
 - [ ] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` (POST 302 + flash, GET `/` rend la bonne page Inertia, GET `/thank-you` rend la page, 422 sur payload invalide, 429 après rate-limit) — via `/create-tests-functional`
 
 ### Frontend

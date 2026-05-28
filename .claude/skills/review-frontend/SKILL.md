@@ -58,7 +58,7 @@ Worth saying once, not enforcing.
 
 - Naming drift (`handleSubmit` vs `submit` vs `onSubmit`). Pick one per file.
 - `as const` opportunities, narrower types, discriminated unions when there's a real benefit.
-- Component file location alignment with backend Use Case (`resources/js/pages/users/create.tsx` ↔ `App\Application\UseCase\CreateUser`).
+- Component file location alignment with backend Action (`resources/js/pages/users/create.tsx` ↔ `App\Actions\CreateUser`).
 - Tailwind ordering — Prettier handles it, don't mention unless it's not run.
 - Default vs named exports — convention, not bug. Only flag if the file mixes both for no reason.
 
@@ -76,8 +76,8 @@ Bringing these up wastes the reader's attention.
 ## 4. Inertia-specific checks (this codebase's biggest source of subtle bugs)
 
 - `usePage<Props>()` — the `Props` type should match what the backend serialises. If the backend uses `spatie/laravel-data` Response DTOs, mirror that shape (eventually via `spatie/laravel-typescript-transformer` if added).
-- `useForm(initial)` — `initial` keys must match the backend `Request` DTO field names **exactly** (camelCase here, see `app/Application/UseCase/CreateUser/Request.php`).
-- Submit handlers should use **Wayfinder action helpers** when available (`resources/js/actions/App/Infrastructure/Http/Controller/User/…`), not literal strings like `post('/users', …)`.
+- `useForm(initial)` — `initial` keys must match the backend input `Data` field names **exactly** (camelCase here, see `app/Data/CreateUserData.php`).
+- Submit handlers should use **Wayfinder action helpers** when available (`resources/js/actions/App/Http/Controllers/User/…`), not literal strings like `post('/users', …)`.
 - `errors` from `useForm` reflect Laravel validation errors — render them next to the field. Don't re-validate client-side what `spatie/laravel-data` already validates.
 - Flash messages come through `usePage().props.flash` — type them globally.
 
@@ -89,7 +89,7 @@ Markdown. Section per severity. File paths with line numbers. Brief actionable s
 ## Frontend review — <branch / PR title>
 
 ### P0 — Blocking
-- `resources/js/pages/users/create.tsx:20` — hardcoded route `'/users'` instead of the Wayfinder helper. Replace with `import { store } from '@/actions/App/Infrastructure/Http/Controller/User/CreateUserController'` and `post(store.url())`.
+- `resources/js/pages/users/create.tsx:20` — hardcoded route `'/users'` instead of the Wayfinder helper. Replace with `import { store } from '@/actions/App/Http/Controllers/User/CreateUserController'` and `post(store.url())`.
 
 ### P1 — Important
 - `resources/js/pages/dashboard.tsx:45` — derived state computed in `useEffect`; move inline, the compiler will memoise.

@@ -24,8 +24,8 @@ If nothing to commit → say so and stop. Don't fabricate an empty commit.
 Stage **deliberately by path**, not `git add -A` / `git add .`:
 
 ```bash
-git add app/Application/UseCase/CreateUser/UseCase.php \
-        tests/Feature/UseCase/CreateUserTest.php
+git add app/Actions/CreateUser.php \
+        tests/Feature/Action/CreateUserTest.php
 ```
 
 **Never stage**:
@@ -77,7 +77,7 @@ Co-Authored-By: Claude Opus 4.7 (1M context) <noreply@anthropic.com>
 
 Look at `git log --oneline -20` for prior scopes before inventing one. Reasonable scopes for Quote Plus, in order of preference:
 
-- **Layer-based**: `domain`, `application`, `infra`, `front`
+- **Layer-based**: `models`, `actions`, `data`, `http`, `front`
 - **Feature-based**: `user`, `quote`, `auth` (when the change cuts across layers for one aggregate)
 - **Cross-cutting**: `archi` (architecture rules / ArchTest), `ci`, `deps`, `docs`
 
@@ -86,11 +86,11 @@ Scope is **optional** — omit if the change is genuinely repo-wide (e.g. `chore
 ### Examples that match this codebase
 
 ```
-feat(user): add CreateUser use case with email validation
-fix(infra): bind UserFactoryInterface to UserFactory in DomainServiceProvider
-refactor(application): return Domain entity from UseCase instead of Response DTO
-test(domain): cover CanCreateUser specification edge cases
-docs(archi): document spatie/laravel-data allow-list rationale
+feat(user): add CreateUser action with email-uniqueness rule
+fix(http): build CreateUserData from the request in the controller
+refactor(actions): move form validation into the input Data DTO
+test(actions): cover the EmailIsUnique business rule
+docs(archi): document the Action validation model
 chore(deps): bump laravel/framework to 13.7.2
 ```
 
