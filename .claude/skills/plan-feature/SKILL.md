@@ -1,9 +1,9 @@
 ---
 name: plan-feature
-description: Turn a fuzzy business need into a feature design doc — challenge assumptions, surface compromises, agree on a Definition of Done with the user, produce a layered TODO. Outputs `docs/features/<slug>.md`. Use when asked to design a feature, scope a feature, plan a feature, conçois cette feature, cadre ce besoin, or before invoking create-usecase / create-front on a new piece of work.
+description: Turn a fuzzy business need into a feature design doc — challenge assumptions, surface compromises, agree on a Definition of Done with the user, produce a layered TODO. Outputs `docs/features/<slug>.md`. Use when asked to design a feature, scope a feature, plan a feature, conçois cette feature, cadre ce besoin, or before invoking create-action / create-front on a new piece of work.
 ---
 
-You are the **product / tech lead in front of a fuzzy business need**. Job: convert that need into a written design that downstream skills (`create-usecase`, `create-front`, `create-tests-usecase`, `create-tests-functional`) can implement without re-interpreting. **You do not write code in this skill.** You write a doc.
+You are the **product / tech lead in front of a fuzzy business need**. Job: convert that need into a written design that downstream skills (`create-action`, `create-front`, `create-tests-action`, `create-tests-functional`) can implement without re-interpreting. **You do not write code in this skill.** You write a doc.
 
 The output is a single Markdown file at `docs/features/<slug>.md`, copied from `[template.md](template.md)`. Status moves from `draft` → `accepted` once the user signs off. After that, hand off — do not start scaffolding.
 
@@ -73,12 +73,12 @@ Backend block — keep only the lines that apply:
 
 ```
 ### Backend
-- [ ] Action `app/Actions/<Name>.php` + input DTO `app/Data/<Name>Data.php` — via `/create-usecase`
-- [ ] Business rules `app/Rules/<Rule>.php` (if any) — via `/create-usecase`
-- [ ] Native Event + Listener (+ Mailable) for side effects — via `/create-usecase`
-- [ ] Eloquent model `app/Models/<Name>.php` + migration `database/migrations/...` — via `/create-usecase`
+- [ ] Action `app/Actions/<Name>.php` + input DTO `app/Data/<Name>Data.php` — via `/create-action`
+- [ ] Business rules `app/Rules/<Rule>.php` (if any) — via `/create-action`
+- [ ] Native Event + Listener (+ Mailable) for side effects — via `/create-action`
+- [ ] Eloquent model `app/Models/<Name>.php` + migration `database/migrations/...` — via `/create-action`
 - [ ] Controller + named route in `routes/web.php` — via `/create-controller`
-- [ ] Action tests `tests/Feature/Action/<Name>Test.php` — via `/create-tests-usecase`
+- [ ] Action tests `tests/Feature/Action/<Name>Test.php` — via `/create-tests-action`
 - [ ] Controller tests `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php` — via `/create-tests-functional`
 ```
 
@@ -110,7 +110,7 @@ Validation block — always:
 2. Copy `[template.md](template.md)` to `docs/features/<slug>.md`.
 3. Fill in every section. `Open questions` may stay non-empty for `draft` status, must be empty for `accepted`.
 4. Show the result to the user. On approval, switch the front-matter line from `Status: draft` to `Status: accepted`.
-5. End with one sentence pointing at the next skill: "Implementation can now start with `/create-usecase` (backend) and/or `/create-front` (frontend) — both should read this doc first."
+5. End with one sentence pointing at the next skill: "Implementation can now start with `/create-action` (backend) and/or `/create-front` (frontend) — both should read this doc first."
 
 **Do not** then proceed to implement. The next skill takes over.
 
@@ -137,4 +137,4 @@ Validation block — always:
 - `CLAUDE.md` — commands, conventions, testsuite layout (`Feature` / `Functional` / `Unit`).
 - `app/Actions/CreateUser.php` + `app/Data/CreateUserData.php` — canonical Action shape; useful as analogy during the challenge ("la feature ressemble à `CreateUser` mais avec…").
 - `app/Providers/EventServiceProvider.php` — current event→listener wiring; tells you which events already exist.
-- Sibling skills (`/create-usecase`, `/create-front`, `/create-tests-usecase`, `/create-tests-functional`, `/review-backend`, `/review-frontend`, `/commit`) — the actual implementers; the TODO references them by name.
+- Sibling skills (`/create-action`, `/create-front`, `/create-tests-action`, `/create-tests-functional`, `/review-backend`, `/review-frontend`, `/commit`) — the actual implementers; the TODO references them by name.

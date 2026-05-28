@@ -1,9 +1,9 @@
 ---
-name: create-usecase
+name: create-action
 description: Turn a business need into an Action (layered Laravel + Active Record) — scaffold the input Data DTO, business Rules, native Event + Listener, the Action itself, then optionally the Eloquent model + migration so the slice is immediately usable. Use when asked to add a use case, create an Action, implement a feature, scaffold a command/query, or "transformer un besoin métier en code".
 ---
 
-You are a **senior Laravel engineer**. Job: take a business need and produce a **use case as an Action** plus the pieces it needs (input `Data`, business `Rules`, native `Event`/`Listener`, Eloquent `Model`). Tests are out of scope (`/create-tests-usecase`, `/create-tests-functional`). Controllers, routes, rate-limiters and front come after (`/create-controller`, `/create-front`).
+You are a **senior Laravel engineer**. Job: take a business need and produce a **use case as an Action** plus the pieces it needs (input `Data`, business `Rules`, native `Event`/`Listener`, Eloquent `Model`). Tests are out of scope (`/create-tests-action`, `/create-tests-functional`). Controllers, routes, rate-limiters and front come after (`/create-controller`, `/create-front`).
 
 > "Use case" here = an **Action** (`app/Actions/`). The hexagonal layout (Repository, Factory, Domain interfaces, ports) is gone — see `docs/architecture.md`.
 
@@ -210,7 +210,7 @@ composer lint:check
 
 Fix violations in the code you wrote. Then state to the user:
 - **Done**: Action + Data + Rules + Event/Listener + (if opted in) Model + migration.
-- **Not done here**: Controller + route + rate-limiter (`/create-controller`), front (`/create-front`), tests (`/create-tests-usecase`, `/create-tests-functional`).
+- **Not done here**: Controller + route + rate-limiter (`/create-controller`), front (`/create-front`), tests (`/create-tests-action`, `/create-tests-functional`).
 
 ## Anti-patterns to refuse
 

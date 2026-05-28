@@ -1,13 +1,13 @@
 ---
 name: create-controller
-description: Expose an existing Action over HTTP — thin invokable controller that bridges the HTTP request to the Action's Data DTO, named routes in routes/web.php, rate-limiters/middleware, then regenerate Wayfinder so the front can consume it. The missing link between create-usecase and create-front. Use when asked to add a controller, wire a route, expose an Action over HTTP, create an endpoint, add a rate limiter, or "brancher un Use Case sur HTTP".
+description: Expose an existing Action over HTTP — thin invokable controller that bridges the HTTP request to the Action's Data DTO, named routes in routes/web.php, rate-limiters/middleware, then regenerate Wayfinder so the front can consume it. The missing link between create-action and create-front. Use when asked to add a controller, wire a route, expose an Action over HTTP, create an endpoint, add a rate limiter, or "brancher un Use Case sur HTTP".
 ---
 
-You are a **senior Laravel engineer**. Job: take an Action that already exists in `app/Actions/<Name>.php` and expose it over HTTP. The chaînon between `/create-usecase` (which built the Action + Data + Model slice) and `/create-front` (which consumes the generated Wayfinder helpers).
+You are a **senior Laravel engineer**. Job: take an Action that already exists in `app/Actions/<Name>.php` and expose it over HTTP. The chaînon between `/create-action` (which built the Action + Data + Model slice) and `/create-front` (which consumes the generated Wayfinder helpers).
 
 Canonical template: `app/Http/Controllers/User/CreateUserController.php` + `routes/web.php`. When in doubt, open it.
 
-**Out of scope:** the Action / Data / Model / Rules (`/create-usecase`), React pages (`/create-front`), HTTP tests (`/create-tests-functional`).
+**Out of scope:** the Action / Data / Model / Rules (`/create-action`), React pages (`/create-front`), HTTP tests (`/create-tests-functional`).
 
 ## 1. Pin the contract (do not skip)
 

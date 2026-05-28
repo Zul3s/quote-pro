@@ -37,12 +37,12 @@
 ## Implementation TODO
 
 ### Backend
-- [ ] Action `app/Actions/<Name>.php` + input DTO `app/Data/<Name>Data.php` — via `/create-usecase`
-- [ ] Business rules `app/Rules/<Rule>.php` (if any) — via `/create-usecase`
-- [ ] Native Event + Listener (+ Mailable) for side effects — via `/create-usecase`
-- [ ] Eloquent model `app/Models/<Name>.php` + migration `database/migrations/...` — via `/create-usecase`
+- [ ] Action `app/Actions/<Name>.php` + input DTO `app/Data/<Name>Data.php` — via `/create-action`
+- [ ] Business rules `app/Rules/<Rule>.php` (if any) — via `/create-action`
+- [ ] Native Event + Listener (+ Mailable) for side effects — via `/create-action`
+- [ ] Eloquent model `app/Models/<Name>.php` + migration `database/migrations/...` — via `/create-action`
 - [ ] Controller + named route in `routes/web.php` — via `/create-controller`
-- [ ] Action tests `tests/Feature/Action/<Name>Test.php` — via `/create-tests-usecase`
+- [ ] Action tests `tests/Feature/Action/<Name>Test.php` — via `/create-tests-action`
 - [ ] Controller tests `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php` — via `/create-tests-functional`
 
 ### Frontend

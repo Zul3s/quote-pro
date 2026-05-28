@@ -1,5 +1,5 @@
 ---
-name: create-tests-usecase
+name: create-tests-action
 description: Generate Pest tests for an Action and its collaborators — Feature tests with real container + DB assertions, Event/Mail fakes, plus DTO-boundary validation tests and Listener tests. Use when asked to test an Action/use case, cover a business Rule, test an event listener, or generate Pest coverage for backend business logic. HTTP/Controller tests are handled by `create-tests-functional`.
 ---
 

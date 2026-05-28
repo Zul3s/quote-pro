@@ -1,9 +1,9 @@
 ---
 name: create-tests-functional
-description: Generate Pest HTTP/Controller functional tests for a feature — JSON API contract, web form redirects + session flash, Inertia render assertions, validation → HTTP status. Lives under `tests/Functional/` (Functional testsuite). Use when asked to test a Controller, test an HTTP endpoint, write a route test, cover the API/web layer, test Inertia responses, or write functional tests. Business logic is covered by `create-tests-usecase`.
+description: Generate Pest HTTP/Controller functional tests for a feature — JSON API contract, web form redirects + session flash, Inertia render assertions, validation → HTTP status. Lives under `tests/Functional/` (Functional testsuite). Use when asked to test a Controller, test an HTTP endpoint, write a route test, cover the API/web layer, test Inertia responses, or write functional tests. Business logic is covered by `create-tests-action`.
 ---
 
-You are a **senior PHP / Pest engineer**. Job: cover the **transport layer only** of a feature — the contract between an HTTP request and the response shape (JSON, redirect, Inertia render, session, status code). Business behaviour (DB writes, events, jobs, business rules) is **already validated by `create-tests-usecase`** — re-asserting it here is duplication that breaks twice.
+You are a **senior PHP / Pest engineer**. Job: cover the **transport layer only** of a feature — the contract between an HTTP request and the response shape (JSON, redirect, Inertia render, session, status code). Business behaviour (DB writes, events, jobs, business rules) is **already validated by `create-tests-action`** — re-asserting it here is duplication that breaks twice.
 
 Test file lives at `tests/Functional/Controller/<Subject>/<Name>ControllerTest.php`. The `Functional` testsuite is its own block in `phpunit.xml` and uses `RefreshDatabase` (wired in `tests/Pest.php`). Run it in isolation with `./vendor/bin/pest --testsuite=Functional`.
 
@@ -44,7 +44,7 @@ Aim for **2–5 scenarios** per controller. If you find yourself testing the sam
 
 ## 3. Silence downstream consequences
 
-Faking is for **isolation from what `create-tests-usecase` already covers**. Do *not* assert on the consequence — only silence it so the controller test doesn't depend on real Job/Mail/I/O execution.
+Faking is for **isolation from what `create-tests-action` already covers**. Do *not* assert on the consequence — only silence it so the controller test doesn't depend on real Job/Mail/I/O execution.
 
 ```php
 Event::fake([UserCreated::class]);   // silence the listener chain
@@ -52,7 +52,7 @@ Bus::fake([SendWelcomeEmail::class]); // silence async jobs
 Mail::fake();                         // silence real mail sending if any
 ```
 
-**Do not** put `Event::assertDispatched(...)` / `Bus::assertDispatched(...)` in a controller test. That assertion belongs to the Use Case test (`create-tests-usecase`).
+**Do not** put `Event::assertDispatched(...)` / `Bus::assertDispatched(...)` in a controller test. That assertion belongs to the Use Case test (`create-tests-action`).
 
 ## 4. JSON API tests — the canonical pattern
 
@@ -199,14 +199,14 @@ If a validation failure surfaces as 500 instead of 422/redirect, the Action or D
 
 ## Anti-patterns to refuse
 
-- **Asserting on DB state** (`assertDatabaseHas`) inside a controller test. That's `create-tests-usecase`'s job. Here you verify the HTTP response only.
+- **Asserting on DB state** (`assertDatabaseHas`) inside a controller test. That's `create-tests-action`'s job. Here you verify the HTTP response only.
 - **Asserting `Event::assertDispatched` / `Bus::assertDispatched`** inside a controller test. Same — Use Case test owns the dispatch assertion. Here you only `fake()` to isolate.
 - **Re-testing every business rule for both JSON and web transports.** Pick one transport per rule. Most projects converge on testing one rule once via the JSON API path because it's terser.
-- **Calling the Use Case directly from a controller test.** If you want that, you wanted a Use Case test — write one with `create-tests-usecase`.
+- **Calling the Use Case directly from a controller test.** If you want that, you wanted a Use Case test — write one with `create-tests-action`.
 - **`postJson` with snake_case keys when the `Request` DTO is camelCase** (or vice versa). The request body must mirror the DTO. Mismatch makes the test fail for the wrong reason — looks like a validation bug, actually a transport mismatch.
 - **`Event::fake()` bare** (no argument). Silences all listeners — including the ones whose absence would surface a real wiring bug elsewhere. Always pass a class array.
 - **Asserting the entire JSON response body verbatim** with `assertExactJson`. Brittle. Prefer `assertJsonStructure` for shape, `assertJsonFragment` for the meaningful fields.
-- **Tests for routes that don't exist yet.** Add the route + controller first (out of scope for this skill — see `create-usecase` for the backend wiring and `create-front` for the page).
+- **Tests for routes that don't exist yet.** Add the route + controller first (out of scope for this skill — see `create-action` for the backend wiring and `create-front` for the page).
 
 ## Sources of truth
 
