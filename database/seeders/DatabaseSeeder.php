@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\ArtisanProfile;
 use App\Models\ContactRequest;
 use App\Models\User;
+use Database\Factories\ArtisanProfileFactory;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
@@ -28,12 +29,16 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
-        // Mono-artisan application: a single profile row.
+        // Mono-artisan application: a single profile row. The tariff grid is
+        // rebuilt from the pinned professions so it stays consistent with them.
+        $professions = ['plomberie', 'chauffage'];
+
         ArtisanProfile::factory()->create([
             'postal_code' => '67000',
-            'professions' => ['plomberie', 'chauffage'],
+            'professions' => $professions,
+            'services' => ArtisanProfileFactory::pricingGrid($professions),
         ]);
 
-        ContactRequest::factory()->count(15)->create();
+        ContactRequest::factory()->count(40)->create();
     }
 }
