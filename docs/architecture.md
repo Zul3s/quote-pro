@@ -3,11 +3,6 @@
 Ce projet applique une architecture **Laravel layered** idiomatique, articulée autour
 d'**Actions** (cas d'usage) et de l'**Active Record** Eloquent.
 
-> **Historique** : le projet a d'abord suivi une architecture hexagonale/DDD (Domain/Application/
-> Infrastructure, Repository, Factory, interfaces d'entité, ports). Elle a été abandonnée le
-> 2026-05-27 : mettre de l'Active Record *derrière* un Repository cumulait le couplage Eloquent
-> **et** la cérémonie Data Mapper sans bénéfice. On a « descendu la couture ».
-
 ## Vue d'ensemble
 
 ```
@@ -27,7 +22,7 @@ ne connaît jamais la couche HTTP. Eloquent est le moteur de persistance, utilis
 | `Models/` | Entités Active Record (Eloquent). Identité UUIDv7 via le trait natif `HasUuids` sur la colonne `uuid`. |
 | `Actions/` | Cas d'usage (`final readonly`, `handle(Data): Model`). Orchestration + déclenchement des règles métier. **Jamais de `Illuminate\Http`.** |
 | `Data/` | DTO d'entrée (`spatie/laravel-data`). Portent la **validation de forme**. Construits uniquement via des constructeurs nommés. |
-| `Rules/` | Règles métier réutilisables (`implements ValidationRule`). Successeurs des Specifications. |
+| `Rules/` | Règles métier réutilisables (`implements ValidationRule`). |
 | `Enums/` | Énumérations (`RequestType`, `Deadline`). |
 | `Events/` | Événements natifs (`use Dispatchable`), portent le modèle concerné. |
 | `Listeners/` | Réactions aux événements (ex. envoi d'email). Câblés explicitement dans `EventServiceProvider`. |
