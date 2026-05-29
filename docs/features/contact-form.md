@@ -1,6 +1,6 @@
 # Contact form — première brique de Quote Plus
 
-> Status: in progress  <!-- draft | accepted | in progress | done -->
+> Status: done  <!-- draft | accepted | in progress | done -->
 > Created: 2026-05-26
 > Author: Jul3s
 
@@ -81,10 +81,10 @@ Aucun envoi d'email, aucun dashboard artisan, aucune logique IA dans ce scope �
 - [x] Vérifier que Wayfinder régénère bien les helpers `resources/js/routes/contact-requests/` et `resources/js/actions/`
 
 ### Final validation
-- [ ] `./vendor/bin/pest` — full suite verte
-- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php` — layering OK
-- [ ] `npm run lint:check && npm run types:check && npm run format:check`
-- [ ] Smoke manuel : soumission valide → arrive sur `/thank-you` + ligne en DB + event dispatché (visible dans `pail`) ; soumission email invalide → erreurs affichées, pas de ligne ; 6 soumissions rapides → 429 sur la dernière.
+- [x] `./vendor/bin/pest` — full suite verte
+- [x] `./vendor/bin/pest tests/Unit/ArchTest.php` — layering OK
+- [x] `npm run lint:check && npm run types:check && npm run format:check`
+- [x] Smoke manuel : soumission valide → arrive sur `/thank-you` + ligne en DB + event dispatché (visible dans `pail`) ; soumission email invalide → erreurs affichées, pas de ligne ; 6 soumissions rapides → 429 sur la dernière.
 
 ## Open questions
 

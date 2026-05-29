@@ -1,6 +1,6 @@
 # Profil artisan
 
-> Status: in progress  <!-- draft | accepted | in progress | done -->
+> Status: done  <!-- draft | accepted | in progress | done -->
 > Created: 2026-05-28
 > Author: Jul3s
 
@@ -71,7 +71,7 @@ Ce lot ne couvre **que la saisie et le stockage** du profil. L'exploitation du p
 - [x] `./vendor/bin/pest` — suite complète au vert
 - [x] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
 - [x] `npm run lint:check && npm run types:check && npm run format:check`
-- [ ] Smoke manuel : 1 happy path (saisie + sauvegarde + re-visite pré-remplie) + 1 error path (code postal invalide ou aucune profession)
+- [x] Smoke manuel : 1 happy path (saisie + sauvegarde + re-visite pré-remplie) + 1 error path (code postal invalide ou aucune profession)
 
 ## Open questions
 
