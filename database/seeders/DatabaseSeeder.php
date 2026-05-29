@@ -39,6 +39,12 @@ class DatabaseSeeder extends Seeder
             'services' => ArtisanProfileFactory::pricingGrid($professions),
         ]);
 
-        ContactRequest::factory()->count(40)->create();
+        // A realistic follow-up queue: mostly qualified (varied priorities),
+        // a few irrelevant (spam / out-of-scope), some still pending qualification,
+        // and some that passed the soft gate with missing info acknowledged.
+        ContactRequest::factory()->count(18)->qualified()->create();
+        ContactRequest::factory()->count(6)->irrelevant()->create();
+        ContactRequest::factory()->count(10)->unqualified()->create();
+        ContactRequest::factory()->count(6)->missingInfoAcknowledged()->create();
     }
 }

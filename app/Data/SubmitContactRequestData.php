@@ -26,6 +26,7 @@ final class SubmitContactRequestData extends Data
         public readonly string $description,
         public readonly ?string $phone = null,
         public readonly ?string $postalCode = null,
+        public readonly bool $acknowledgeMissingInfo = false,
     ) {}
 
     /**
@@ -41,6 +42,7 @@ final class SubmitContactRequestData extends Data
             'description' => ['required', 'string', 'max:5000'],
             'phone' => ['nullable', 'string', 'max:40'],
             'postalCode' => ['nullable', 'string', 'max:20'],
+            'acknowledgeMissingInfo' => ['nullable', 'boolean'],
         ];
     }
 
@@ -57,6 +59,7 @@ final class SubmitContactRequestData extends Data
         string $description,
         ?string $phone = null,
         ?string $postalCode = null,
+        bool $acknowledgeMissingInfo = false,
     ): self {
         return self::validateAndCreate([
             'name' => $name,
@@ -66,6 +69,7 @@ final class SubmitContactRequestData extends Data
             'description' => $description,
             'phone' => $phone,
             'postalCode' => $postalCode,
+            'acknowledgeMissingInfo' => $acknowledgeMissingInfo,
         ]);
     }
 }

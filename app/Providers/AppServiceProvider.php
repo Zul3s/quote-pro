@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\Qualifier;
+use App\Services\OllamaQualifier;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -15,6 +17,15 @@ use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
+    /**
+     * Explicit container bindings (by preference — no auto-discovery by convention).
+     *
+     * @var array<class-string, class-string>
+     */
+    public array $bindings = [
+        Qualifier::class => OllamaQualifier::class,
+    ];
+
     public function register(): void
     {
         //

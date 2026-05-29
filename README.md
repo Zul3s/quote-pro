@@ -15,6 +15,31 @@ Laravel 13 + React 19 (Inertia) demo project, built on an idiomatic
   Vite 8 (with `babel-plugin-react-compiler`).
 - **Database** — SQLite by default (`database/database.sqlite`), created
   automatically by `composer setup`.
+- **Qualification** — local LLM via [Ollama](https://ollama.com) (`llama3.2:3b`
+  by default), behind a `Qualifier` contract (`App\Contracts`) with an Ollama
+  adapter (`App\Services\OllamaQualifier`).
+
+## Requirements
+
+- **PHP ≥ 8.3** and **Composer**.
+- **Node.js** (LTS) and **npm**.
+- **[Ollama](https://ollama.com)** for the qualification engine — it powers both
+  the synchronous submission gate (is the description detailed enough to quote?)
+  and the asynchronous labelling (relevance, project type, summary, € estimate).
+  Install it (<https://ollama.com/download>) and pull the model used by default:
+
+  ```bash
+  ollama pull llama3.2:3b
+  ```
+
+  Ollama listens on `http://localhost:11434` out of the box; override in `.env`
+  via `OLLAMA_BASE_URL` / `OLLAMA_MODEL` if needed. The async qualification runs
+  on the queue, so keep a worker running (`composer dev` already starts
+  `queue:listen`).
+
+  > **Optional for basic dev.** The qualifier *fails open*: if Ollama is
+  > unreachable, contact submissions still go through and the request stays
+  > "not yet qualified" until a worker reaches the model.
 
 ## Quickstart
 

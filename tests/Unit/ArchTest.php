@@ -49,3 +49,8 @@ arch('Enums are enums')
 arch('Events are final')
     ->expect('App\Events')
     ->toBeFinal();
+
+arch('Service adapters are final and never reach the HTTP/Inertia layer')
+    ->expect('App\Services')
+    ->toBeFinal()
+    ->not->toUse(['Illuminate\Http', 'Inertia']);

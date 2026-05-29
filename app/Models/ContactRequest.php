@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\Deadline;
+use App\Enums\LeadQuality;
+use App\Enums\Priority;
+use App\Enums\Relevance;
 use App\Enums\RequestType;
 use Database\Factories\ContactRequestFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
@@ -35,6 +38,15 @@ final class ContactRequest extends Model
         'deadline',
         'postal_code',
         'description',
+        'missing_info_acknowledged',
+        'relevance',
+        'project_type',
+        'summary',
+        'estimated_amount_min',
+        'estimated_amount_max',
+        'lead_quality',
+        'priority',
+        'qualified_at',
     ];
 
     /**
@@ -53,6 +65,13 @@ final class ContactRequest extends Model
         return [
             'request_type' => RequestType::class,
             'deadline' => Deadline::class,
+            'missing_info_acknowledged' => 'boolean',
+            'relevance' => Relevance::class,
+            'estimated_amount_min' => 'integer',
+            'estimated_amount_max' => 'integer',
+            'lead_quality' => LeadQuality::class,
+            'priority' => Priority::class,
+            'qualified_at' => 'immutable_datetime',
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',
         ];

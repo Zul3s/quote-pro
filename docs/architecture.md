@@ -72,8 +72,10 @@ resserre le type en dessous pour PHPStan), jamais par un `@var` qui forcerait un
 | `Data/` | DTO d'entrée (`spatie/laravel-data`). Portent la **validation de forme**. Construits uniquement via des constructeurs nommés. |
 | `Rules/` | Règles métier réutilisables (`implements ValidationRule`). |
 | `Enums/` | Énumérations (`RequestType`, `Deadline`). |
+| `Contracts/` | Interfaces de services + leurs **value objects de sortie** (`final readonly`, ex. `Qualifier`, `SufficiencyResult`, `QualificationResult`). Distincts des `Data` (DTO d'entrée validés). Bindés explicitement dans un provider. |
+| `Services/` | Adaptateurs d'intégrations externes (`final`, ex. `OllamaQualifier` ↔ LLM Ollama). N'utilisent ni `Illuminate\Http` (couche web) ni `Inertia`. |
 | `Events/` | Événements natifs (`use Dispatchable`), portent le modèle concerné. |
-| `Listeners/` | Réactions aux événements (ex. envoi d'email). Câblés explicitement dans `EventServiceProvider`. |
+| `Listeners/` | Réactions aux événements (ex. envoi d'email, qualification asynchrone). Câblés explicitement dans `EventServiceProvider`. |
 | `Mail/` | Mailables. |
 | `Http/Controllers/` | Controllers invokables fins : font le pont HTTP → Data → Action. |
 | `Http/Middleware/` | Middlewares HTTP. |
@@ -153,6 +155,7 @@ La discipline ne repose pas sur la convention mais sur des règles **mécaniques
 - `App\Data` : étend `Spatie\LaravelData\Data`.
 - `App\Rules` : implémente `Illuminate\Contracts\Validation\ValidationRule`.
 - `App\Enums` : sont des enums. `App\Events` : `final`.
+- `App\Services` : `final` **et** ne dépendent jamais de `Illuminate\Http` / `Inertia`.
 
 ### `ArchDataConstructionTest.php` (niveau AST, php-parser)
 - Interdit tout `new XxxData(...)` hors `app/Data/` : le DSL Pest arch ne sait pas distinguer une
