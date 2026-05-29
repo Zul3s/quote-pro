@@ -72,7 +72,7 @@ and never touches the HTTP layer. Eloquent is used directly.
 
 ### Layers (`app/`)
 - `Models/` — Eloquent entities. UUIDv7 identity via the native `HasUuids` trait on the `uuid` column (`uniqueIds()` returns `['uuid']`; `id` stays the auto-increment PK).
-- `Actions/` — use cases (`final readonly`, `handle(XxxData): Model`). Run business `Rules` via the `Validator` facade, persist, dispatch a native event. **Never use `Illuminate\Http`.**
+- `Actions/` — use cases, **writes and reads alike** (`final readonly`). Writes: `handle(XxxData): Model`, run business `Rules` via the `Validator` facade, persist. Reads (`Show`/`Get`/`List`): return `?Model`/`Collection`, and take a `Data` only when the query needs several inputs. A native event is **optional on either side** — dispatched when a need calls for it (most often on writes), not a defining trait. **Never use `Illuminate\Http`.** Corollary: all data access — read or write — goes through an Action; controllers never touch `App\Models`.
 - `Data/` — input DTOs (`extends Spatie\LaravelData\Data`, `readonly` props) carrying **form validation** (`rules()`). Built **only** via named constructors `fromRequest(Request)` / `fromValues(...)`, each calling `validateAndCreate`. Direct `new XxxData(...)` is forbidden (AST guardrail). The constructor stays **public** (Spatie hydrates through it; `private` breaks hydration).
 - `Rules/` — reusable business rules (`implements ValidationRule`), e.g. `EmailIsUnique`.
 - `Enums/` — `RequestType`, `Deadline`.
@@ -107,7 +107,7 @@ and never touches the HTTP layer. Eloquent is used directly.
 
 `tests/Unit/ArchTest.php` (Pest arch):
 - `App\Actions` are `final` **and** never use `Illuminate\Http` / `Inertia` (the seam).
-- `App\Http\Controllers` never use the `DB` facade.
+- `App\Http\Controllers` never use the `DB` facade nor `App\Models` (data access — read or write — goes through an Action; this also rules out implicit route-model binding). This covers **type-level** references too: no `use App\Models\X` for a `@var`/generic docblock. A model's type rides on the Action's return signature and is inferred in the controller; narrow `?Model` via control flow (`if ($x === null) abort(404)`), never a `@var` (which would force an import → lint↔arch deadlock).
 - `App\Data` extend `Spatie\LaravelData\Data`; `App\Rules` implement `ValidationRule`.
 - `App\Enums` are enums; `App\Events` are `final`.
 

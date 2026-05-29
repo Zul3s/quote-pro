@@ -13,14 +13,62 @@ HTTP (Controller)  →  Action (orchestration + métier)  →  Model (Active Rec
 ```
 
 **Règle d'or** : le HTTP s'arrête au Controller. L'Action porte le métier (validation comprise) et
-ne connaît jamais la couche HTTP. Eloquent est le moteur de persistance, utilisé directement.
+ne connaît jamais la couche HTTP. Eloquent est le moteur de persistance, utilisé directement
+**dans l'Action**. Corollaire : **tout accès aux données — lecture comme écriture — passe par une
+Action**. Un Controller ne référence jamais `App\Models` (garde-fou ArchTest), ce qui exclut aussi
+le route-model binding implicite (`__invoke(ArtisanProfile $p)`) : ce binding ferait requêter la base
+pour le compte du Controller, c'est la même entorse. Charger une entité depuis une route = une Action
+de lecture qui prend l'identifiant en `Data`.
+
+### Écriture vs lecture
+
+Une Action n'est pas qu'une écriture. Deux formes coexistent, l'invariant dur étant uniquement
+« la donnée passe par une Action » :
+
+| | Écriture (`CreateUser`, `SaveArtisanProfile`) | Lecture (`ShowArtisanProfile`) |
+|---|---|---|
+| Entrée | un `Data` (validé) **obligatoire** | un `Data` **optionnel** — présent dès qu'on a besoin de plusieurs entrées (uuid, user courant, filtres…) |
+| Sortie | le `Model` persisté | `?Model` / `Collection` |
+| Event | **optionnel** — dispatche un événement natif quand le besoin l'exige (le plus souvent en écriture) | **optionnel** — généralement aucun, mais possible si un besoin l'exige |
+| Nommage | verbe d'action (`Create`, `Save`, `Submit`) | `Show` / `Get` / `List` |
+
+On accepte la cérémonie d'une Action de lecture parfois triviale (un simple passe-plat Eloquent) :
+c'est le foyer naturel du scoping / de l'autorisation à venir, et ça évite une règle « lecture simple
+tolérée dans le Controller » que l'ArchTest ne saurait pas trancher (archi à deux vitesses refusée).
+
+#### Le Controller ne nomme jamais un modèle — même au niveau type
+
+La règle « un Controller ne référence jamais `App\Models` » couvre **aussi les références purement
+type-level** : pas de `use App\Models\X` pour un `@var`, pas de `Collection<int, X>` en docblock dans
+un Controller. Quand le Controller a besoin du type d'un modèle, **ce type est porté par la signature
+de retour de l'Action et inféré** :
+
+```php
+// L'Action précise le type générique — l'import du modèle est ici, à sa place.
+/** @return \Illuminate\Database\Eloquent\Collection<int, ArtisanProfile> */
+public function handle(): Collection { return ArtisanProfile::query()->get(); }
+
+// Controller : $profiles est déjà typé Collection<int, ArtisanProfile> par inférence,
+// sans aucune annotation ni mention du modèle.
+$profiles = $action->handle();
+```
+
+Pour resserrer un `?Model` en `Model`, on passe par le **flux de contrôle** (`if ($x === null) abort(404);`
+resserre le type en dessous pour PHPStan), jamais par un `@var` qui forcerait un import.
+
+> **Pourquoi pas de FQN en docblock ?** Le fixer Pint `fully_qualified_strict_types` réécrirait
+> `\App\Models\X` en nom court importé → réintroduisant le `use` que l'ArchTest interdit (deadlock
+> lint ↔ arch). Le deadlock n'est pas un bug du garde-fou : c'est le signal qu'un type modèle remonte
+> sur la signature de l'Action, pas dans le Controller. On a écarté l'option inverse (désactiver le
+> fixer Pint pour tolérer les références type-only) : elle affaiblit Pint pour tout le repo et crée une
+> distinction arbitraire (`use` interdit mais FQN docblock toléré) au profit d'une commodité marginale.
 
 ## Arborescence (`app/`)
 
 | Dossier | Rôle |
 |---|---|
 | `Models/` | Entités Active Record (Eloquent). Identité UUIDv7 via le trait natif `HasUuids` sur la colonne `uuid`. |
-| `Actions/` | Cas d'usage (`final readonly`, `handle(Data): Model`). Orchestration + déclenchement des règles métier. **Jamais de `Illuminate\Http`.** |
+| `Actions/` | Cas d'usage — **écriture comme lecture** (`final readonly`). Orchestration + déclenchement des règles métier. **Jamais de `Illuminate\Http`.** |
 | `Data/` | DTO d'entrée (`spatie/laravel-data`). Portent la **validation de forme**. Construits uniquement via des constructeurs nommés. |
 | `Rules/` | Règles métier réutilisables (`implements ValidationRule`). |
 | `Enums/` | Énumérations (`RequestType`, `Deadline`). |
@@ -100,7 +148,8 @@ La discipline ne repose pas sur la convention mais sur des règles **mécaniques
 
 ### `ArchTest.php` (Pest arch)
 - `App\Actions` : `final` **et** ne dépend jamais de `Illuminate\Http` / `Inertia` (la couture).
-- `App\Http\Controllers` : ne touche pas la base directement (`DB` facade).
+- `App\Http\Controllers` : ne touche pas la base directement (`DB` facade) **ni `App\Models`** —
+  tout accès aux données passe par une Action (lecture comprise).
 - `App\Data` : étend `Spatie\LaravelData\Data`.
 - `App\Rules` : implémente `Illuminate\Contracts\Validation\ValidationRule`.
 - `App\Enums` : sont des enums. `App\Events` : `final`.

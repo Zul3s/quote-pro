@@ -30,6 +30,10 @@ arch('Controllers never hit the database directly')
     ->expect('App\Http\Controllers')
     ->not->toUse(['Illuminate\Support\Facades\DB']);
 
+arch('Controllers never touch Eloquent models (data access goes through Actions)')
+    ->expect('App\Http\Controllers')
+    ->not->toUse('App\Models');
+
 arch('Input DTOs extend Spatie Data')
     ->expect('App\Data')
     ->toExtend('Spatie\LaravelData\Data');
