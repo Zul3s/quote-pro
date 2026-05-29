@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ArtisanProfile\EditArtisanProfileController;
 use App\Http\Controllers\ArtisanProfile\SaveArtisanProfileController;
+use App\Http\Controllers\ContactRequest\ListContactRequestsController;
 use App\Http\Controllers\ContactRequest\SubmitContactRequestController;
 use App\Http\Controllers\User\CreateUserController;
 use Illuminate\Support\Facades\Route;
@@ -17,3 +18,5 @@ Route::post('/users', CreateUserController::class)->name('users.store');
 
 Route::get('/profile', EditArtisanProfileController::class)->name('profile.edit');
 Route::post('/profile', SaveArtisanProfileController::class)->name('profile.store');
+
+Route::get('/dashboard', ListContactRequestsController::class)->name('dashboard');

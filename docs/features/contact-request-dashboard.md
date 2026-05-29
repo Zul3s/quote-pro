@@ -59,20 +59,20 @@ les demandes **brutes**, triées par date.
 ### Backend
 - [x] Action de lecture `app/Actions/ListContactRequests.php` (`handle(ListContactRequestsData): LengthAwarePaginator`, `where` conditionnels sur `request_type`/`deadline`, `orderByDesc('created_at')`, `paginate(25)->withQueryString()`) — via `/create-action`
 - [x] Input DTO `app/Data/ListContactRequestsData.php` (`type` nullable, `deadline` nullable) avec validation de forme : `type` `nullable` + `Rule::enum(RequestType::class)`, `deadline` `nullable` + `Rule::enum(Deadline::class)` ; construit via `fromRequest` — via `/create-action`
-- [ ] Controller invokable `app/Http/Controllers/ContactRequest/ListContactRequestsController.php` rendant `dashboard/index` avec la prop paginée + les filtres courants ; route `GET /dashboard` nommée `dashboard` dans `routes/web.php` — via `/create-controller`
+- [x] Controller invokable `app/Http/Controllers/ContactRequest/ListContactRequestsController.php` rendant `dashboard/index` avec la prop paginée + les filtres courants ; route `GET /dashboard` nommée `dashboard` dans `routes/web.php` — via `/create-controller`
 - [x] Action tests `tests/Feature/Action/ListContactRequestsTest.php` (tri date desc, filtre type, filtre deadline, filtres combinés, pagination à 25, validation DTO rejette enum invalide) — via `/create-tests-action`
-- [ ] Controller tests `tests/Functional/Controller/ContactRequest/ListContactRequestsControllerTest.php` (GET rend `dashboard/index` avec la prop, filtres via query params, pagination, état vide, 422/redirect-back sur filtre invalide) — via `/create-tests-functional`
+- [x] Controller tests `tests/Functional/Controller/ContactRequest/ListContactRequestsControllerTest.php` (GET rend `dashboard/index` avec la prop paginée + filtres, écho des filtres validés via query params, pagination 25/page conservant les filtres en page 2, état vide, filtre hors enum → redirect-back + `assertSessionHasErrors`) — via `/create-tests-functional`
 
 ### Frontend
-- [ ] shadcn primitives à installer si absents : `Table`, `Badge`, `Select`, `Pagination`, et `Collapsible` (ou `Sheet`/`Drawer`) pour le détail inline — via `/create-front`
-- [ ] Page Inertia `resources/js/pages/dashboard/index.tsx` : tableau des demandes, badges type/délai, ligne dépliable (détail inline), selects de filtre câblés sur une navigation Inertia (`router.get` avec `preserveState`/`only`), liens de pagination depuis le paginator, état vide — via `/create-front`
-- [ ] Type partagé `resources/js/types/contact-request.ts` : forme d'une `ContactRequest` lue + forme paginée (`data`, `links`/`meta`) renvoyée par l'Action — via `/create-front`
-- [ ] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` pour la route `dashboard`
+- [x] shadcn primitives installées : `Table`, `Badge`, `Select` (détail inline rendu via une ligne dépliable maison + `Fragment`, sans `Collapsible`/`Sheet` ; pagination rendue depuis les `links` du paginator avec `<Link>` Inertia, sans le primitive `Pagination`) — via `/create-front`
+- [x] Page Inertia `resources/js/pages/dashboard/index.tsx` : tableau des demandes, badges type/délai, ligne dépliable (détail inline : email, téléphone, description complète), selects de filtre câblés sur `router.get` (`preserveState`/`preserveScroll`/`replace`, query params nettoyés), liens de pagination depuis le paginator, état vide — via `/create-front`
+- [x] Type partagé `resources/js/types/contact-request.ts` : `ContactRequestRow` (forme lue, snake_case), `ContactRequestFilters`, `Paginated<T>` (`data`, `links`, meta) + maps de labels `REQUEST_TYPE_LABELS`/`DEADLINE_LABELS` — via `/create-front`
+- [x] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` pour la route `dashboard`
 
 ### Final validation
-- [ ] `./vendor/bin/pest` — suite complète au vert
-- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
-- [ ] `npm run lint:check && npm run types:check && npm run format:check`
+- [x] `./vendor/bin/pest` — suite complète au vert (51 tests)
+- [x] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent (9 tests)
+- [x] `npm run lint:check && npm run types:check && npm run format:check` + `composer lint:check`
 - [ ] Smoke manuel : 1 happy path (liste affichée, filtre appliqué, page 2 conserve le filtre, détail déplié) + 1 error path (filtre type invalide → erreur, pas de plantage)
 
 ## Open questions
