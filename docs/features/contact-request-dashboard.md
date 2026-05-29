@@ -1,6 +1,6 @@
 # Dashboard des demandes de contact
 
-> Status: accepted  <!-- draft | accepted | in progress | done -->
+> Status: in progress  <!-- draft | accepted | in progress | done -->
 > Created: 2026-05-29
 > Author: Jul3s
 
@@ -57,8 +57,8 @@ les demandes **brutes**, triées par date.
 ## Implementation TODO
 
 ### Backend
-- [ ] Action de lecture `app/Actions/ListContactRequests.php` (`handle(ListContactRequestsData): LengthAwarePaginator`, `where` conditionnels sur `request_type`/`deadline`, `orderByDesc('created_at')`, `paginate(25)->withQueryString()`) — via `/create-action`
-- [ ] Input DTO `app/Data/ListContactRequestsData.php` (`type` nullable, `deadline` nullable) avec validation de forme : `type` `nullable` + `Rule::enum(RequestType::class)`, `deadline` `nullable` + `Rule::enum(Deadline::class)` ; construit via `fromRequest` — via `/create-action`
+- [x] Action de lecture `app/Actions/ListContactRequests.php` (`handle(ListContactRequestsData): LengthAwarePaginator`, `where` conditionnels sur `request_type`/`deadline`, `orderByDesc('created_at')`, `paginate(25)->withQueryString()`) — via `/create-action`
+- [x] Input DTO `app/Data/ListContactRequestsData.php` (`type` nullable, `deadline` nullable) avec validation de forme : `type` `nullable` + `Rule::enum(RequestType::class)`, `deadline` `nullable` + `Rule::enum(Deadline::class)` ; construit via `fromRequest` — via `/create-action`
 - [ ] Controller invokable `app/Http/Controllers/ContactRequest/ListContactRequestsController.php` rendant `dashboard/index` avec la prop paginée + les filtres courants ; route `GET /dashboard` nommée `dashboard` dans `routes/web.php` — via `/create-controller`
 - [ ] Action tests `tests/Feature/Action/ListContactRequestsTest.php` (tri date desc, filtre type, filtre deadline, filtres combinés, pagination à 25, validation DTO rejette enum invalide) — via `/create-tests-action`
 - [ ] Controller tests `tests/Functional/Controller/ContactRequest/ListContactRequestsControllerTest.php` (GET rend `dashboard/index` avec la prop, filtres via query params, pagination, état vide, 422/redirect-back sur filtre invalide) — via `/create-tests-functional`
