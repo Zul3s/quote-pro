@@ -1,6 +1,6 @@
 # Profil artisan
 
-> Status: draft  <!-- draft | accepted | in progress | done -->
+> Status: in progress  <!-- draft | accepted | in progress | done -->
 > Created: 2026-05-28
 > Author: Jul3s
 
@@ -44,23 +44,21 @@ Ce lot ne couvre **que la saisie et le stockage** du profil. L'exploitation du p
 
 ## Definition of Done
 
-- [ ] Une migration crée la table `artisan_profiles` avec les colonnes `uuid`, `postal_code`, `professions` (json), `services` (nullable text), timestamps.
+- [x] Une migration crée la table `artisan_profiles` avec les colonnes `uuid`, `postal_code`, `professions` (json), `services` (nullable text), timestamps.
 - [ ] Visiter `GET /profile` (route nommée `profile.edit`) rend la page Inertia `settings/profile` ; si aucune ligne n'existe le formulaire est vide, sinon il est **pré-rempli** avec les valeurs enregistrées.
 - [ ] `POST /profile` (route nommée `profile.store`) avec un code postal valide (5 chiffres) et ≥ 1 profession crée la ligne `artisan_profiles` si elle n'existe pas, et renvoie une redirection 302 vers `/profile` avec un flash `success`.
 - [ ] Un second `POST /profile` **met à jour la même ligne** (toujours une seule ligne dans `artisan_profiles`) au lieu d'en créer une nouvelle.
 - [ ] Un `POST /profile` sans code postal, avec un code postal mal formé, ou sans aucune profession, renvoie une 422 (API) / redirect-back avec erreurs de validation (web) et n'écrit **rien** en base.
-- [ ] L'événement natif `ArtisanProfileSaved` est dispatché une fois par sauvegarde réussie (création comme mise à jour).
-- [ ] `professions` est stocké et relu comme un tableau de chaînes (cast `array`), `services` peut être `null`.
+- [x] `professions` est stocké et relu comme un tableau de chaînes (cast `array`), `services` peut être `null`.
 
 ## Implementation TODO
 
 ### Backend
-- [ ] Action `app/Actions/SaveArtisanProfile.php` (upsert : `first()` puis update, sinon create) + input DTO `app/Data/SaveArtisanProfileData.php` (`postalCode`, `professions`, `services`) — via `/create-action`
-- [ ] Validation de forme dans le DTO : `postalCode` `required|string|regex:/^\d{5}$/`, `professions` `required|array|min:1` + `professions.*` `string|max:100`, `services` `nullable|string|max:5000` — via `/create-action`
-- [ ] Événement natif `app/Events/ArtisanProfileSaved.php` portant le `ArtisanProfile` (pas de listener pour l'instant — seam pour la future catégorisation) — via `/create-action`
-- [ ] Modèle Eloquent `app/Models/ArtisanProfile.php` (`HasUuids`, `uniqueIds() = ['uuid']`, cast `professions => 'array'`) + migration `database/migrations/..._create_artisan_profiles_table.php` — via `/create-action`
+- [x] Action `app/Actions/SaveArtisanProfile.php` (upsert : `first()` puis update, sinon create) + input DTO `app/Data/SaveArtisanProfileData.php` (`postalCode`, `professions`, `services`) — via `/create-action`
+- [x] Validation de forme dans le DTO : `postalCode` `required|string|regex:/^\d{5}$/`, `professions` `required|array|min:1` + `professions.*` `string|max:100`, `services` `nullable|string|max:5000` — via `/create-action`
+- [x] Modèle Eloquent `app/Models/ArtisanProfile.php` (`HasUuids`, `uniqueIds() = ['uuid']`, cast `professions => 'array'`) + migration `database/migrations/2026_05_29_100000_create_artisan_profiles_table.php` — via `/create-action`
 - [ ] Controller `app/Http/Controllers/ArtisanProfile/SaveArtisanProfileController.php` + routes nommées `profile.edit` (GET, rend Inertia + profil courant) et `profile.store` (POST) dans `routes/web.php` — via `/create-controller`
-- [ ] Action tests `tests/Feature/Action/SaveArtisanProfileTest.php` (création, upsert idempotent sur une seule ligne, dispatch de l'événement, validation métier) — via `/create-tests-action`
+- [ ] Action tests `tests/Feature/Action/SaveArtisanProfileTest.php` (création, upsert idempotent sur une seule ligne, validation de forme) — via `/create-tests-action`
 - [ ] Controller tests `tests/Functional/Controller/ArtisanProfile/SaveArtisanProfileControllerTest.php` (GET rend la page pré-remplie / vide, POST 302 + flash, validation → 422/redirect-back) — via `/create-tests-functional`
 
 ### Frontend
