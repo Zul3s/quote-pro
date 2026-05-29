@@ -45,10 +45,10 @@ Ce lot ne couvre **que la saisie et le stockage** du profil. L'exploitation du p
 ## Definition of Done
 
 - [x] Une migration crée la table `artisan_profiles` avec les colonnes `uuid`, `postal_code`, `professions` (json), `services` (nullable text), timestamps.
-- [ ] Visiter `GET /profile` (route nommée `profile.edit`) rend la page Inertia `settings/profile` ; si aucune ligne n'existe le formulaire est vide, sinon il est **pré-rempli** avec les valeurs enregistrées.
-- [ ] `POST /profile` (route nommée `profile.store`) avec un code postal valide (5 chiffres) et ≥ 1 profession crée la ligne `artisan_profiles` si elle n'existe pas, et renvoie une redirection 302 vers `/profile` avec un flash `success`.
-- [ ] Un second `POST /profile` **met à jour la même ligne** (toujours une seule ligne dans `artisan_profiles`) au lieu d'en créer une nouvelle.
-- [ ] Un `POST /profile` sans code postal, avec un code postal mal formé, ou sans aucune profession, renvoie une 422 (API) / redirect-back avec erreurs de validation (web) et n'écrit **rien** en base.
+- [x] Visiter `GET /profile` (route nommée `profile.edit`) rend la page Inertia `settings/profile` ; si aucune ligne n'existe le formulaire est vide, sinon il est **pré-rempli** avec les valeurs enregistrées.
+- [x] `POST /profile` (route nommée `profile.store`) avec un code postal valide (5 chiffres) et ≥ 1 profession crée la ligne `artisan_profiles` si elle n'existe pas, et renvoie une redirection 302 vers `/profile` avec un flash `success`.
+- [x] Un second `POST /profile` **met à jour la même ligne** (toujours une seule ligne dans `artisan_profiles`) au lieu d'en créer une nouvelle.
+- [x] Un `POST /profile` sans code postal, avec un code postal mal formé, ou sans aucune profession, renvoie une 422 (API) / redirect-back avec erreurs de validation (web) et n'écrit **rien** en base.
 - [x] `professions` est stocké et relu comme un tableau de chaînes (cast `array`), `services` peut être `null`.
 
 ## Implementation TODO
@@ -59,18 +59,18 @@ Ce lot ne couvre **que la saisie et le stockage** du profil. L'exploitation du p
 - [x] Modèle Eloquent `app/Models/ArtisanProfile.php` (`HasUuids`, `uniqueIds() = ['uuid']`, cast `professions => 'array'`) + migration `database/migrations/2026_05_29_100000_create_artisan_profiles_table.php` — via `/create-action`
 - [ ] Controller `app/Http/Controllers/ArtisanProfile/SaveArtisanProfileController.php` + routes nommées `profile.edit` (GET, rend Inertia + profil courant) et `profile.store` (POST) dans `routes/web.php` — via `/create-controller`
 - [x] Action tests `tests/Feature/Action/SaveArtisanProfileTest.php` (création, upsert idempotent sur une seule ligne, validation de forme) — via `/create-tests-action`
-- [ ] Controller tests `tests/Functional/Controller/ArtisanProfile/SaveArtisanProfileControllerTest.php` (GET rend la page pré-remplie / vide, POST 302 + flash, validation → 422/redirect-back) — via `/create-tests-functional`
+- [x] Controller tests `tests/Functional/Controller/ArtisanProfile/` (EditArtisanProfileControllerTest : GET rend la page pré-remplie / vide ; SaveArtisanProfileControllerTest : POST 302 + flash, validation → 422/redirect-back) — via `/create-tests-functional`
 
 ### Frontend
-- [ ] shadcn primitives à installer si absents (`Input`, `Textarea`, `Button`, `Label`) + un composant de saisie de tags pour `professions` (peut être géré avec `Input` + liste, ou un combobox) — via `/create-front`
-- [ ] Page Inertia `resources/js/pages/settings/profile.tsx` : formulaire `useForm` câblé sur le helper Wayfinder `profile.store`, pré-rempli depuis les props, gestion des erreurs de validation et du flash `success` — via `/create-front`
-- [ ] Type partagé `resources/js/types/` pour la forme du profil (`{ postalCode: string; professions: string[]; services: string | null }`) si le payload est réutilisé
-- [ ] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` (routes `profile.edit` / `profile.store`)
+- [x] shadcn primitives à installer si absents (`Input`, `Textarea`, `Button`, `Label`) + un composant de saisie de tags pour `professions` (peut être géré avec `Input` + liste, ou un combobox) — via `/create-front`
+- [x] Page Inertia `resources/js/pages/settings/profile.tsx` : formulaire `useForm` câblé sur le helper Wayfinder `profile.store`, pré-rempli depuis les props, gestion des erreurs de validation et du flash `success` — via `/create-front`
+- [x] Type partagé `resources/js/types/` pour la forme du profil (`{ postalCode: string; professions: string[]; services: string | null }`) si le payload est réutilisé
+- [x] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` (routes `profile.edit` / `profile.store`)
 
 ### Final validation
-- [ ] `./vendor/bin/pest` — suite complète au vert
-- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
-- [ ] `npm run lint:check && npm run types:check && npm run format:check`
+- [x] `./vendor/bin/pest` — suite complète au vert
+- [x] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
+- [x] `npm run lint:check && npm run types:check && npm run format:check`
 - [ ] Smoke manuel : 1 happy path (saisie + sauvegarde + re-visite pré-remplie) + 1 error path (code postal invalide ou aucune profession)
 
 ## Open questions
