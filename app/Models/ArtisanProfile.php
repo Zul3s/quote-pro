@@ -4,7 +4,11 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use Database\Factories\ArtisanProfileFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -13,9 +17,11 @@ use Illuminate\Database\Eloquent\Model;
  * HasUuids trait (UUIDv7 here), targeting the `uuid` column rather than the
  * auto-increment primary key (see uniqueIds()).
  */
+#[UseFactory(ArtisanProfileFactory::class)]
 final class ArtisanProfile extends Model
 {
-    use HasUuids;
+    /** @use HasFactory<ArtisanProfileFactory> */
+    use HasFactory, HasUuids;
 
     protected $table = 'artisan_profiles';
 
@@ -44,5 +50,10 @@ final class ArtisanProfile extends Model
             'created_at' => 'immutable_datetime',
             'updated_at' => 'immutable_datetime',
         ];
+    }
+
+    protected static function newFactory(): Factory
+    {
+        return ArtisanProfileFactory::new();
     }
 }

@@ -19,7 +19,7 @@ DDD / Clean / Hexagonal layers.
 ## Quickstart
 
 ```bash
-composer setup        # install deps, copy .env, generate key, migrate, build assets
+composer setup        # install deps, copy .env, generate key, migrate + seed, build assets
 composer dev          # parallel: php artisan serve + queue:listen + pail + vite
 ```
 
@@ -59,6 +59,27 @@ composer ci:check       # full bundle: lint:check + format:check + types:check +
 npm run build           # frontend production build
 npm run build:ssr       # build + SSR
 ```
+
+### Database seeding
+
+Demo data is provided through Laravel **factories** (`database/factories/`) and
+**seeders** (`database/seeders/`).
+
+```bash
+php artisan db:seed                 # seed an existing database
+php artisan migrate:fresh --seed    # drop + remigrate + reseed (dev reset)
+```
+
+`composer setup` already runs `migrate --force --seed`, so a fresh install comes
+with demo data.
+
+`DatabaseSeeder` seeds: the test user (`test@example.com`), the singleton
+`ArtisanProfile` (mono-artisan app), and a batch of `ContactRequest` records.
+
+> **No seeding in production.** `DatabaseSeeder` short-circuits when
+> `app()->environment('production')` — production data never depends on
+> fixtures. Reference data that must exist in production belongs in
+> **migrations**, not seeders.
 
 ## Architecture (DDD / Clean / Hexagonal)
 
