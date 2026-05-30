@@ -71,10 +71,10 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 ## Definition of Done
 
 ### Garde synchrone souple & boucle infos manquantes
-- [ ] Un `POST /` **sans** `acknowledge_missing_info` dont la description est jugée **insuffisante** par le `Qualifier` renvoie une **422 (API) / redirect-back avec erreurs (web)**, le message d'erreur portant le **détail de ce qu'il manque** (texte renvoyé par le LLM), et **aucune** ligne n'est créée dans `contact_requests`.
-- [ ] Un `POST /` **avec** `acknowledge_missing_info = true` **ne lance pas** la garde de suffisance : la ligne est créée même si la description est maigre, avec `missing_info_acknowledged = true`, et `ContactRequestSubmitted` est dispatché.
-- [ ] Un `POST /` dont la description est jugée **suffisante** crée la ligne `contact_requests` (avec `qualified_at` **null**, `missing_info_acknowledged = false`) et dispatche `ContactRequestSubmitted`.
-- [ ] Un `POST /` pendant lequel `Qualifier::assess` **lève une exception** (LLM indisponible) **ne renvoie pas d'erreur au prospect** : la demande est **créée quand même** (fail-open), l'échec est loggé, et `ContactRequestSubmitted` est dispatché.
+- [x] Un `POST /` **sans** `acknowledge_missing_info` dont la description est jugée **insuffisante** par le `Qualifier` renvoie une **422 (API) / redirect-back avec erreurs (web)**, le message d'erreur portant le **détail de ce qu'il manque** (texte renvoyé par le LLM), et **aucune** ligne n'est créée dans `contact_requests`.
+- [x] Un `POST /` **avec** `acknowledge_missing_info = true` **ne lance pas** la garde de suffisance : la ligne est créée même si la description est maigre, avec `missing_info_acknowledged = true`, et `ContactRequestSubmitted` est dispatché.
+- [x] Un `POST /` dont la description est jugée **suffisante** crée la ligne `contact_requests` (avec `qualified_at` **null**, `missing_info_acknowledged = false`) et dispatche `ContactRequestSubmitted`.
+- [x] Un `POST /` pendant lequel `Qualifier::assess` **lève une exception** (LLM indisponible) **ne renvoie pas d'erreur au prospect** : la demande est **créée quand même** (fail-open), l'échec est loggé, et `ContactRequestSubmitted` est dispatché.
 - [x] Le formulaire public affiche le message « infos manquantes » renvoyé par le serveur (sur le champ `description` ou en bannière) **et révèle l'option « je ne suis pas en mesure de fournir ces informations »** (case à cocher / second bouton) ; cocher puis resoumettre fait passer la demande.
 
 ### Étiquetage asynchrone
@@ -121,7 +121,7 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 
 ### Backend — lecture
 - [x] Adapter `app/Actions/ListContactRequests.php` : tri `priority` desc (via `CASE`) puis `created_at` desc ; le payload inclut les nouvelles colonnes — via `/create-action`
-- [ ] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` étendus (description insuffisante sans override → redirect-back + `assertSessionHasErrors` avec le message « infos manquantes », rien en base ; même POST **avec** `acknowledge_missing_info=true` → 302 succès + ligne créée `missing_info_acknowledged=true`) + `ListContactRequestsControllerTest.php` (ordre par priorité, étiquettes dans la prop, état non-qualifiée, badge infos incomplètes) — via `/create-tests-functional`
+- [x] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` étendus (description insuffisante sans override → redirect-back + `assertSessionHasErrors` avec le message « infos manquantes », rien en base ; même POST **avec** `acknowledge_missing_info=true` → 302 succès + ligne créée `missing_info_acknowledged=true`) + `ListContactRequestsControllerTest.php` (ordre par priorité, étiquettes dans la prop, état non-qualifiée, badge infos incomplètes) — via `/create-tests-functional`
 
 ### Frontend
 - [x] shadcn : réutiliser `Badge` ; installer `Checkbox` si absent ; vérifier l'affichage d'erreur serveur sur le formulaire de contact — via `/create-front`
@@ -131,9 +131,9 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 - [x] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` (aucune route nouvelle attendue, mais payloads modifiés)
 
 ### Final validation
-- [ ] `./vendor/bin/pest` — suite complète au vert
-- [ ] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
-- [ ] `npm run lint:check && npm run types:check && npm run format:check` + `composer lint:check`
+- [x] `./vendor/bin/pest` — suite complète au vert (79 tests)
+- [x] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
+- [x] `npm run lint:check && npm run types:check && npm run format:check` + `composer lint:check`
 - [ ] Smoke manuel : happy path (description riche → demande créée → job qualifie → étiquettes au dashboard, file triée par priorité) ; soft-gate (description maigre → message « précisez la surface… » au formulaire + case « je ne peux pas fournir » → resoumission cochée → demande créée, badge « infos incomplètes assumées ») ; résilience (Ollama coupé → la soumission **passe quand même** (fail-open), la demande est créée et reste « en attente de qualification » jusqu'au retour du service)
 
 ## Open questions
