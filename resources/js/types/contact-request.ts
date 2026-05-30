@@ -14,6 +14,12 @@ export type Deadline =
     | 'over_one_month'
     | 'not_urgent';
 
+export type Relevance = 'relevant' | 'out_of_area' | 'out_of_trade' | 'spam';
+
+export type LeadQuality = 'complete' | 'incomplete';
+
+export type Priority = 'high' | 'medium' | 'low';
+
 export type SubmitContactRequestPayload = {
     name: string;
     email: string;
@@ -22,6 +28,7 @@ export type SubmitContactRequestPayload = {
     description: string;
     phone: string;
     postalCode: string;
+    acknowledgeMissingInfo: boolean;
 };
 
 export const REQUEST_TYPE_OPTIONS: ReadonlyArray<{
@@ -70,6 +77,24 @@ export const DEADLINE_LABELS: Record<Deadline, string> = Object.fromEntries(
     DEADLINE_OPTIONS.map(({ value, label }) => [value, label]),
 ) as Record<Deadline, string>;
 
+export const RELEVANCE_LABELS: Record<Relevance, string> = {
+    relevant: 'Pertinente',
+    out_of_area: 'Hors zone',
+    out_of_trade: 'Hors métier',
+    spam: 'Spam',
+};
+
+export const LEAD_QUALITY_LABELS: Record<LeadQuality, string> = {
+    complete: 'Complet',
+    incomplete: 'Incomplet',
+};
+
+export const PRIORITY_LABELS: Record<Priority, string> = {
+    high: 'Haute',
+    medium: 'Moyenne',
+    low: 'Basse',
+};
+
 /**
  * A contact request as read by the dashboard (snake_case mirrors the Eloquent
  * model's serialised payload; enums are cast to their string value, timestamps
@@ -86,6 +111,17 @@ export type ContactRequestRow = {
     postal_code: string | null;
     description: string;
     created_at: string;
+    // Qualification labels: null until the async job has run (`qualified_at`
+    // gates the "en attente de qualification" state).
+    missing_info_acknowledged: boolean;
+    relevance: Relevance | null;
+    project_type: string | null;
+    summary: string | null;
+    estimated_amount_min: number | null;
+    estimated_amount_max: number | null;
+    lead_quality: LeadQuality | null;
+    priority: Priority | null;
+    qualified_at: string | null;
 };
 
 /**

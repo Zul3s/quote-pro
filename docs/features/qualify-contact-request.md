@@ -75,7 +75,7 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 - [ ] Un `POST /` **avec** `acknowledge_missing_info = true` **ne lance pas** la garde de suffisance : la ligne est créée même si la description est maigre, avec `missing_info_acknowledged = true`, et `ContactRequestSubmitted` est dispatché.
 - [ ] Un `POST /` dont la description est jugée **suffisante** crée la ligne `contact_requests` (avec `qualified_at` **null**, `missing_info_acknowledged = false`) et dispatche `ContactRequestSubmitted`.
 - [ ] Un `POST /` pendant lequel `Qualifier::assess` **lève une exception** (LLM indisponible) **ne renvoie pas d'erreur au prospect** : la demande est **créée quand même** (fail-open), l'échec est loggé, et `ContactRequestSubmitted` est dispatché.
-- [ ] Le formulaire public affiche le message « infos manquantes » renvoyé par le serveur (sur le champ `description` ou en bannière) **et révèle l'option « je ne suis pas en mesure de fournir ces informations »** (case à cocher / second bouton) ; cocher puis resoumettre fait passer la demande.
+- [x] Le formulaire public affiche le message « infos manquantes » renvoyé par le serveur (sur le champ `description` ou en bannière) **et révèle l'option « je ne suis pas en mesure de fournir ces informations »** (case à cocher / second bouton) ; cocher puis resoumettre fait passer la demande.
 
 ### Étiquetage asynchrone
 - [x] Après traitement du job de qualification, la ligne `contact_requests` a ses colonnes peuplées : `relevance`, `project_type`, `summary`, `estimated_amount_min`, `estimated_amount_max`, `lead_quality`, `priority`, et `qualified_at` **non-null** (l'urgence n'est pas une colonne : elle reste portée par `deadline`).
@@ -86,9 +86,9 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 - [x] Si le `Qualifier` lève une exception dans le job, la ligne **reste non qualifiée** (colonnes null, `qualified_at` null) et le job est **rejoué** par la queue ; la demande n'est jamais perdue ni supprimée.
 
 ### Lecture / dashboard
-- [ ] `GET /dashboard` ordonne la liste par **priorité décroissante** puis `created_at` décroissant (file de relance), et chaque ligne expose les étiquettes : badges `relevance` / `deadline` (urgence, déjà affiché) / `lead_quality` / `priority`, le `project_type` + `summary`, et l'estimation € (`min–max`) **côté artisan uniquement**.
-- [ ] Une demande **non encore qualifiée** (`qualified_at` null) est affichée avec un état explicite (ex. badge « en attente de qualification ») au lieu d'étiquettes vides.
-- [ ] Une demande `missing_info_acknowledged = true` est signalée par un badge dédié (ex. « infos incomplètes assumées »), et son estimation absente s'affiche comme « non chiffrable » plutôt qu'en erreur.
+- [x] `GET /dashboard` ordonne la liste par **priorité décroissante** puis `created_at` décroissant (file de relance), et chaque ligne expose les étiquettes : badges `relevance` / `deadline` (urgence, déjà affiché) / `lead_quality` / `priority`, le `project_type` + `summary`, et l'estimation € (`min–max`) **côté artisan uniquement**.
+- [x] Une demande **non encore qualifiée** (`qualified_at` null) est affichée avec un état explicite (ex. badge « en attente de qualification ») au lieu d'étiquettes vides.
+- [x] Une demande `missing_info_acknowledged = true` est signalée par un badge dédié (ex. « infos incomplètes assumées »), et son estimation absente s'affiche comme « non chiffrable » plutôt qu'en erreur.
 
 ### Architecture & garde-fous
 - [x] `App\Contracts\Qualifier` est un **contrat** ; `App\Services\OllamaQualifier` est bindé en prod, `FakeQualifier` en test — **aucun test ne fait d'appel réseau** (suite verte sans Ollama).
@@ -124,11 +124,11 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 - [ ] Controller tests `tests/Functional/Controller/ContactRequest/SubmitContactRequestControllerTest.php` étendus (description insuffisante sans override → redirect-back + `assertSessionHasErrors` avec le message « infos manquantes », rien en base ; même POST **avec** `acknowledge_missing_info=true` → 302 succès + ligne créée `missing_info_acknowledged=true`) + `ListContactRequestsControllerTest.php` (ordre par priorité, étiquettes dans la prop, état non-qualifiée, badge infos incomplètes) — via `/create-tests-functional`
 
 ### Frontend
-- [ ] shadcn : réutiliser `Badge` ; installer `Checkbox` si absent ; vérifier l'affichage d'erreur serveur sur le formulaire de contact — via `/create-front`
-- [ ] Page de contact (`/`) : afficher le message « infos manquantes » renvoyé par le serveur (erreur sur `description` ou bannière) **et révéler, au refus, la case `acknowledgeMissingInfo` « je ne suis pas en mesure de fournir ces informations » (ou un second bouton submit)** qui, cochée + resoumise, fait passer la demande — via `/create-front`
-- [ ] Page `resources/js/pages/dashboard/index.tsx` : badges pertinence/urgence/qualité/priorité, `project_type` + `summary`, estimation `min–max €` (artisan), état « en attente de qualification », tri par priorité reflété — via `/create-front`
-- [ ] Types partagés `resources/js/types/contact-request.ts` : étendre `ContactRequestRow` (champs de qualification nullables + `missing_info_acknowledged: boolean`) + maps de labels `RELEVANCE_LABELS` / `LEAD_QUALITY_LABELS` / `PRIORITY_LABELS` *(les labels d'urgence = `DEADLINE_LABELS` existants)* — via `/create-front`
-- [ ] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` (aucune route nouvelle attendue, mais payloads modifiés)
+- [x] shadcn : réutiliser `Badge` ; installer `Checkbox` si absent ; vérifier l'affichage d'erreur serveur sur le formulaire de contact — via `/create-front`
+- [x] Page de contact (`/`) : afficher le message « infos manquantes » renvoyé par le serveur (erreur sur `description` ou bannière) **et révéler, au refus, la case `acknowledgeMissingInfo` « je ne suis pas en mesure de fournir ces informations » (ou un second bouton submit)** qui, cochée + resoumise, fait passer la demande — via `/create-front`
+- [x] Page `resources/js/pages/dashboard/index.tsx` : badges pertinence/urgence/qualité/priorité, `project_type` + `summary`, estimation `min–max €` (artisan), état « en attente de qualification », tri par priorité reflété — via `/create-front`
+- [x] Types partagés `resources/js/types/contact-request.ts` : étendre `ContactRequestRow` (champs de qualification nullables + `missing_info_acknowledged: boolean`) + maps de labels `RELEVANCE_LABELS` / `LEAD_QUALITY_LABELS` / `PRIORITY_LABELS` *(les labels d'urgence = `DEADLINE_LABELS` existants)* — via `/create-front`
+- [x] Vérifier que Wayfinder régénère `resources/js/routes/` et `resources/js/actions/` (aucune route nouvelle attendue, mais payloads modifiés)
 
 ### Final validation
 - [ ] `./vendor/bin/pest` — suite complète au vert

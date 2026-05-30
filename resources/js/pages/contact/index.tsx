@@ -10,6 +10,7 @@ import {
     CardHeader,
     CardTitle,
 } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -31,7 +32,16 @@ export default function ContactIndex() {
             description: '',
             phone: '',
             postalCode: '',
+            acknowledgeMissingInfo: false,
         });
+
+    // The soft sufficiency gate runs server-side only on a non-empty description
+    // (form validation rejects an empty one first), so a description error paired
+    // with content is the "missing info" message — that's when we reveal the
+    // "I can't provide this" escape hatch. Stays visible once acknowledged.
+    const showAcknowledge =
+        (!!errors.description && data.description.trim() !== '') ||
+        data.acknowledgeMissingInfo;
 
     const submit: FormEventHandler = (event) => {
         event.preventDefault();
@@ -258,6 +268,32 @@ export default function ContactIndex() {
                                         </p>
                                     )}
                                 </div>
+
+                                {showAcknowledge && (
+                                    <div className="flex items-start gap-3 rounded-md border border-input bg-muted/40 p-4">
+                                        <Checkbox
+                                            id="acknowledgeMissingInfo"
+                                            checked={
+                                                data.acknowledgeMissingInfo
+                                            }
+                                            onCheckedChange={(checked) =>
+                                                setData(
+                                                    'acknowledgeMissingInfo',
+                                                    checked === true,
+                                                )
+                                            }
+                                            className="mt-0.5"
+                                        />
+                                        <Label
+                                            htmlFor="acknowledgeMissingInfo"
+                                            className="font-normal"
+                                        >
+                                            Je ne suis pas en mesure de fournir
+                                            ces informations — envoyez ma
+                                            demande telle quelle.
+                                        </Label>
+                                    </div>
+                                )}
                             </CardContent>
 
                             <CardFooter>
