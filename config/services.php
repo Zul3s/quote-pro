@@ -37,7 +37,7 @@ return [
 
     'ollama' => [
         'base_url' => env('OLLAMA_BASE_URL', 'http://localhost:11434'),
-        'model' => env('OLLAMA_MODEL', 'llama3.2:3b'),
+        'model' => env('OLLAMA_MODEL', 'llama3.1:8b'),
     ],
 
 ];

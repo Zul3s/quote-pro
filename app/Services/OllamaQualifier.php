@@ -25,16 +25,18 @@ final readonly class OllamaQualifier implements Qualifier
     public function assess(string $description, ArtisanProfile $profile): SufficiencyResult
     {
         $payload = $this->generate(<<<PROMPT
-            Tu assistes un artisan ({$this->professions($profile)}). Voici son barème (texte libre) : {$profile->services}.
-            Un prospect a écrit la demande ci-dessous. À partir du métier et du barème de l'artisan,
-            déduis les informations nécessaires pour ÉTABLIR UN DEVIS, puis juge si la demande les contient.
-            Il faut a minima : (1) le « quoi » — la nature des travaux est identifiable — et (2) les quantités
-            chiffrables pertinentes pour ce métier (notamment la surface en m², et selon le cas le nombre de
-            pièces ou d'éléments). Si l'un manque, elle est insuffisante.
+            Tu aides un artisan ({$this->professions($profile)}) à filtrer les demandes de devis entrantes.
+            Ton SEUL rôle : juger si la demande du prospect contient le minimum pour être chiffrable. Deux conditions :
+            (1) le « quoi » : la nature des travaux est identifiable ;
+            (2) au moins une indication de volume : une surface en m², OU un nombre de pièces/éléments, OU une quantité explicite.
+            Si ces deux conditions sont réunies, la demande est SUFFISANTE — même si des détails de précision manquent.
+            Règles strictes :
+            - Ne juge QUE ce que le prospect a écrit. N'invente jamais un besoin, un problème ou un travail absent du texte.
+            - N'utilise pas le métier de l'artisan pour exiger des travaux supplémentaires.
+            - Ne réclame pas tous les détails possibles ; une seule indication de volume suffit.
 
-            Réponds en JSON strict : {"sufficient": bool, "message": string}. Quand insuffisant,
-            "message" liste précisément, en français et en une phrase, ce que le prospect doit
-            ajouter (ex. « précisez la surface en m² et la nature des travaux »). Quand suffisant,
+            Réponds en JSON strict : {"sufficient": bool, "message": string}. Si insuffisant, "message"
+            indique en une phrase, en français, ce qui manque (le « quoi », ou une quantité). Si suffisant,
             "message" vaut "".
 
             Demande :
@@ -93,6 +95,7 @@ final readonly class OllamaQualifier implements Qualifier
                 'prompt' => $prompt,
                 'stream' => false,
                 'format' => 'json',
+                'options' => ['temperature' => 0],
             ])
             ->throw();
 

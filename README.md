@@ -15,7 +15,7 @@ Laravel 13 + React 19 (Inertia) demo project, built on an idiomatic
   Vite 8 (with `babel-plugin-react-compiler`).
 - **Database** — SQLite by default (`database/database.sqlite`), created
   automatically by `composer setup`.
-- **Qualification** — local LLM via [Ollama](https://ollama.com) (`llama3.2:3b`
+- **Qualification** — local LLM via [Ollama](https://ollama.com) (`llama3.1:8b`
   by default), behind a `Qualifier` contract (`App\Contracts`) with an Ollama
   adapter (`App\Services\OllamaQualifier`).
 
@@ -29,13 +29,18 @@ Laravel 13 + React 19 (Inertia) demo project, built on an idiomatic
   Install it (<https://ollama.com/download>) and pull the model used by default:
 
   ```bash
-  ollama pull llama3.2:3b
+  ollama pull llama3.1:8b
   ```
 
   Ollama listens on `http://localhost:11434` out of the box; override in `.env`
   via `OLLAMA_BASE_URL` / `OLLAMA_MODEL` if needed. The async qualification runs
   on the queue, so keep a worker running (`composer dev` already starts
   `queue:listen`).
+
+  > **Why `llama3.1:8b`?** The submission gate is a judgement task: a lighter
+  > model (`llama3.2:3b`) too often misjudges a quotable request as insufficient
+  > and invents missing details. `8b` is the smallest model that judges reliably
+  > here; set `OLLAMA_MODEL=llama3.2:3b` to trade accuracy for speed/RAM.
 
   > **Optional for basic dev.** The qualifier *fails open*: if Ollama is
   > unreachable, contact submissions still go through and the request stays
