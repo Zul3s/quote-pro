@@ -1,4 +1,6 @@
-import type { Auth } from '@/types/auth';
+// Keep this file a module (not a global script) so the `declare module`
+// blocks below are treated as augmentations, not ambient redeclarations.
+export {};
 
 declare module 'react' {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -11,7 +13,6 @@ declare module '@inertiajs/core' {
     export interface InertiaConfig {
         sharedPageProps: {
             name: string;
-            auth: Auth;
             sidebarOpen: boolean;
             [key: string]: unknown;
         };

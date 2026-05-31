@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\ArtisanProfile;
 use App\Models\ContactRequest;
-use App\Models\User;
 use Database\Factories\ArtisanProfileFactory;
 use Illuminate\Database\Seeder;
 
@@ -22,12 +21,6 @@ class DatabaseSeeder extends Seeder
         if (app()->environment('production')) {
             return;
         }
-
-        User::factory()->create([
-            'first_name' => 'Test',
-            'last_name' => 'User',
-            'email' => 'test@example.com',
-        ]);
 
         // Mono-artisan application: a single profile row. The tariff grid is
         // rebuilt from the pinned professions so it stays consistent with them.

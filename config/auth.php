@@ -1,7 +1,5 @@
 <?php
 
-use App\Models\User;
-
 return [
 
     /*
@@ -62,15 +60,13 @@ return [
     */
 
     'providers' => [
+        // Quote Plus ships no authentication: there is no User model and no
+        // login flow. This dormant provider keeps Laravel's auth config valid
+        // (nothing resolves it) without referencing a model class.
         'users' => [
-            'driver' => 'eloquent',
-            'model' => env('AUTH_MODEL', User::class),
+            'driver' => 'database',
+            'table' => 'users',
         ],
-
-        // 'users' => [
-        //     'driver' => 'database',
-        //     'table' => 'users',
-        // ],
     ],
 
     /*
