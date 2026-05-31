@@ -1,6 +1,6 @@
 # Qualification automatique des demandes & boucle « infos manquantes »
 
-> Status: in progress  <!-- draft | accepted | in progress | done -->
+> Status: done  <!-- draft | accepted | in progress | done -->
 > Created: 2026-05-29
 > Author: Jul3s
 
@@ -134,7 +134,7 @@ sémantiques ; les étiquettes mécaniques sont calculées de façon **détermin
 - [x] `./vendor/bin/pest` — suite complète au vert (79 tests)
 - [x] `./vendor/bin/pest tests/Unit/ArchTest.php tests/Unit/ArchDataConstructionTest.php` — guardrails passent
 - [x] `npm run lint:check && npm run types:check && npm run format:check` + `composer lint:check`
-- [ ] Smoke manuel : happy path (description riche → demande créée → job qualifie → étiquettes au dashboard, file triée par priorité) ; soft-gate (description maigre → message « précisez la surface… » au formulaire + case « je ne peux pas fournir » → resoumission cochée → demande créée, badge « infos incomplètes assumées ») ; résilience (Ollama coupé → la soumission **passe quand même** (fail-open), la demande est créée et reste « en attente de qualification » jusqu'au retour du service)
+- [x] Smoke manuel : happy path (description riche → demande créée → job qualifie → étiquettes au dashboard, file triée par priorité) ; soft-gate (description maigre → message « précisez la surface… » au formulaire + case « je ne peux pas fournir » → resoumission cochée → demande créée, badge « infos incomplètes assumées ») ; résilience (Ollama coupé → la soumission **passe quand même** (fail-open), la demande est créée et reste « en attente de qualification » jusqu'au retour du service)
 
 ## Open questions
 
