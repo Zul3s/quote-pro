@@ -221,6 +221,7 @@ export default function ContactRequestDashboard() {
                                             <TableRow>
                                                 <TableHead className="w-8" />
                                                 <TableHead>Nom</TableHead>
+                                                <TableHead>Résumé</TableHead>
                                                 <TableHead>Priorité</TableHead>
                                                 <TableHead>Type</TableHead>
                                                 <TableHead>Délai</TableHead>
@@ -293,6 +294,40 @@ export default function ContactRequestDashboard() {
                                                                     )}
                                                                 </span>
                                                             </TableCell>
+                                                            <TableCell className="max-w-xs align-top">
+                                                                {row.qualified_at ===
+                                                                null ? (
+                                                                    <span className="text-sm text-muted-foreground">
+                                                                        En
+                                                                        attente
+                                                                    </span>
+                                                                ) : (
+                                                                    <>
+                                                                        {row.summary ? (
+                                                                            <p
+                                                                                className="line-clamp-2 text-sm"
+                                                                                title={
+                                                                                    row.summary
+                                                                                }
+                                                                            >
+                                                                                {
+                                                                                    row.summary
+                                                                                }
+                                                                            </p>
+                                                                        ) : (
+                                                                            <p className="text-sm text-muted-foreground">
+                                                                                —
+                                                                            </p>
+                                                                        )}
+                                                                        <p className="mt-0.5 text-xs text-muted-foreground">
+                                                                            {formatEstimate(
+                                                                                row,
+                                                                            ) ??
+                                                                                'Non chiffrable'}
+                                                                        </p>
+                                                                    </>
+                                                                )}
+                                                            </TableCell>
                                                             <TableCell>
                                                                 {row.qualified_at ===
                                                                 null ? (
@@ -355,7 +390,7 @@ export default function ContactRequestDashboard() {
                                                             <TableRow className="bg-muted/30 hover:bg-muted/30">
                                                                 <TableCell />
                                                                 <TableCell
-                                                                    colSpan={5}
+                                                                    colSpan={6}
                                                                     className="space-y-3 py-4"
                                                                 >
                                                                     <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
@@ -399,33 +434,7 @@ export default function ContactRequestDashboard() {
                                                                                     '—'}
                                                                             </dd>
                                                                         </div>
-                                                                        <div>
-                                                                            <dt className="font-medium">
-                                                                                Estimation{' '}
-                                                                                <span className="font-normal text-muted-foreground">
-                                                                                    (interne)
-                                                                                </span>
-                                                                            </dt>
-                                                                            <dd className="text-muted-foreground">
-                                                                                {formatEstimate(
-                                                                                    row,
-                                                                                ) ??
-                                                                                    'Non chiffrable'}
-                                                                            </dd>
-                                                                        </div>
                                                                     </dl>
-                                                                    {row.summary && (
-                                                                        <div className="space-y-1 text-sm">
-                                                                            <p className="font-medium">
-                                                                                Résumé
-                                                                            </p>
-                                                                            <p className="text-muted-foreground">
-                                                                                {
-                                                                                    row.summary
-                                                                                }
-                                                                            </p>
-                                                                        </div>
-                                                                    )}
                                                                     <div className="space-y-1 text-sm">
                                                                         <p className="font-medium">
                                                                             Besoin
