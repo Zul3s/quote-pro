@@ -7,9 +7,40 @@ prospects who haven't replied.
 Laravel 13 + React 19 (Inertia) demo project, built on an idiomatic
 **layered Laravel** architecture (Actions + Active Record).
 
+## What it does — the use case
+
+Quote Plus is a **mono-artisan** tool: it serves *one* craftsman, not a
+marketplace. The end-to-end flow it demonstrates:
+
+1. **The artisan sets up a profile** (`/profile`) — postal code, trade(s) and a
+   free-text description of services & rates (e.g. *"false-ceiling install ~ €35/m²"*).
+   This profile feeds the qualification engine.
+2. **A prospect submits a request** through the public contact form (`/`):
+   their need, request type, deadline and area.
+3. **A synchronous gate** checks, via the local LLM, that the description is
+   detailed enough to quote. If it is too thin, the prospect is asked for more
+   info before the request is accepted.
+4. **Asynchronous qualification** (on the queue) then labels each accepted
+   request: relevance, urgency, project type, a short **summary**, an internal
+   **€ estimate**, lead quality and an overall **priority** — never deleting a
+   lead (*"zero lead dropped"*; the artisan stays the sole judge).
+5. **The artisan reads the dashboard** (`/dashboard`): requests ordered by
+   priority, each row showing the summary and estimate at a glance, with a
+   foldable detail panel.
+
+### Routes / pages
+
+| Route | Page | Audience |
+| --- | --- | --- |
+| `GET /` | Public contact form | Prospect |
+| `POST /contact-requests` | Submit a request (rate-limited) | Prospect |
+| `GET /thank-you` | Confirmation | Prospect |
+| `GET /profile` · `POST /profile` | Edit / save the artisan profile | Artisan |
+| `GET /dashboard` | Qualified-requests dashboard | Artisan |
+
 ## Stack
 
-- **Backend** — Laravel 13, PHP ≥ 8.3, Pest 4, `spatie/laravel-data`,
+- **Backend** — Laravel 13, PHP ≥ 8.4, Pest 4, `spatie/laravel-data`,
   Inertia.js, Wayfinder.
 - **Frontend** — React 19 + TypeScript, Inertia React adapter, Tailwind v4,
   Vite 8 (with `babel-plugin-react-compiler`).
@@ -21,7 +52,7 @@ Laravel 13 + React 19 (Inertia) demo project, built on an idiomatic
 
 ## Requirements
 
-- **PHP ≥ 8.3** and **Composer**.
+- **PHP ≥ 8.4** and **Composer**.
 - **Node.js** (LTS) and **npm**.
 - **[Ollama](https://ollama.com)** for the qualification engine — it powers both
   the synchronous submission gate (is the description detailed enough to quote?)
